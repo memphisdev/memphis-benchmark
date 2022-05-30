@@ -1,0 +1,22 @@
+{
+  "name": "memphis-benchmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "consumer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Memphis-OS/memphis-benchmark.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Memphis-OS/memphis-benchmark/issues"
+  },
+  "homepage": "https://github.com/Memphis-OS/memphis-benchmark#readme",
+  "dependencies": {
+    "memphis-dev": "^0.2.8"
+  }
+}
