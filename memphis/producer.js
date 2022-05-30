@@ -1,5 +1,30 @@
 const memphis = require('memphis-dev');
 
+const defaults = {
+  s: "localhost",
+  c: 10000,
+  size: 128,
+  station: "benchmark",
+  i: 1,
+};
+
+const argv = parse(
+  process.argv.slice(2),
+  {
+    alias: {
+      "s": ["server"],
+      "c": ["count"],
+      "d": ["debug"],
+      "size": ["message_size"],
+      "i": ["iterations"],
+    },
+    default: defaults,
+    string: [
+      "station",
+    ],
+  },
+);
+
 (async function () {
     try {
         await memphis.connect({
