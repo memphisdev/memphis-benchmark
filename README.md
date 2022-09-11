@@ -1,0 +1,1 @@
+go run main.go opType=produce/consume msgSize=1050 msgCount=1000000 host=localhost username=root token=memphis storageType=file/memory replicas=1 cg=cgName pullInterval=5 batchSize=100 batchTTW=100
