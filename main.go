@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/memphisdev/memphis.go"
@@ -19,7 +21,7 @@ func getMsgInSize(len int) []byte {
 	return bytes
 }
 
-func main() {
+func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int) {
 	opType := (strings.Split(os.Args[1], "="))[1]
 	if opType != "produce" && opType != "consume" {
 		fmt.Println("opType has to be 1 of the following produce/consume")
@@ -70,7 +72,7 @@ func main() {
 		fmt.Println("pullInterval has to be a positive number")
 		os.Exit(1)
 	}
-	pullInterval := time.Duration(pullIntervalInt) * time.Millisecond
+	pullInterval := time.Duration(pullIntervalInt) * time.Microsecond
 
 	batchSizeString := (strings.Split(os.Args[11], "="))[1]
 	batchSize, err := strconv.Atoi(batchSizeString)
@@ -85,7 +87,20 @@ func main() {
 		fmt.Println("batchTTW has to be a positive number")
 		os.Exit(1)
 	}
-	batchTTW := time.Duration(batchTTWInt) * time.Millisecond
+	batchTTW := time.Duration(batchTTWInt) * time.Microsecond
+
+	concurrencyString := (strings.Split(os.Args[13], "="))[1]
+	concurrency, err := strconv.Atoi(concurrencyString)
+	if err != nil || batchSize <= 0 {
+		fmt.Println("concurrency has to be a positive number")
+		os.Exit(1)
+	}
+
+	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency
+}
+
+func main() {
+	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency := validateArgs()
 
 	c, err := memphis.Connect(host, username, token)
 	if err != nil {
@@ -106,56 +121,97 @@ func main() {
 	}
 	defer s.Destroy()
 
-	p, err := s.CreateProducer("prod_" + timestamp)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	// produce
+	msg := getMsgInSize(msgSize)
+
+	concurrencyFactor := runtime.NumCPU()
+	if concurrency < concurrencyFactor {
+		concurrencyFactor = concurrency
 	}
 
-	msg := getMsgInSize(msgSize)
+	var producers []*memphis.Producer
+	for i := 0; i < concurrencyFactor; i++ {
+		index := strconv.Itoa(i)
+		p, err := s.CreateProducer("prod_" + index)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		producers = append(producers, p)
+	}
 
 	var start time.Time
 	if opType == "produce" {
 		start = time.Now()
 	}
 
-	for i := 0; i < msgsCount; i++ {
-		p.Produce(msg)
-	}
-
-	if opType == "consume" {
-		done := make(chan bool)
-		cons, err := s.CreateConsumer("cons_"+timestamp,
-			memphis.ConsumerGroup(cg),
-			memphis.PullInterval(pullInterval),
-			memphis.BatchSize(batchSize),
-			memphis.BatchMaxWaitTime(batchTTW),
-		)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+	var wg sync.WaitGroup
+	wg.Add(concurrencyFactor)
+	for i := 0; i < concurrencyFactor; i++ {
+		var count int
+		if concurrencyFactor-1 == 0 { // run with single producer
+			count = msgsCount
+		} else if i == concurrencyFactor-1 {
+			count = (msgsCount / concurrencyFactor) + (msgsCount % concurrencyFactor)
+		} else {
+			count = msgsCount / concurrencyFactor
 		}
 
-		consumedMsgs := 0
+		go func(p *memphis.Producer, msg []byte, count int, wg *sync.WaitGroup) {
+			for i := 0; i < count; i++ {
+				p.Produce(msg)
+			}
+			wg.Done()
+		}(producers[i], msg, count, &wg)
+	}
+	wg.Wait()
+
+	// consume
+	if opType == "consume" {
+		var consumers []*memphis.Consumer
+		for i := 0; i < concurrencyFactor; i++ {
+			index := strconv.Itoa(i)
+			cons, err := s.CreateConsumer("cons_"+index,
+				memphis.ConsumerGroup(cg),
+				memphis.PullInterval(pullInterval),
+				memphis.BatchSize(batchSize),
+				memphis.BatchMaxWaitTime(batchTTW),
+			)
+
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+			consumers = append(consumers, cons)
+		}
+
 		start = time.Now()
 
-		cons.Consume(func(msgs []*memphis.Msg, err error) {
-			if err == nil {
-				for _, m := range msgs {
-					m.Ack()
-					consumedMsgs++
-					if consumedMsgs >= msgsCount {
-						done <- true
+		var wg1 sync.WaitGroup
+		wg1.Add(concurrencyFactor)
+		for i := 0; i < concurrencyFactor; i++ {
+			go func(c *memphis.Consumer, wg *sync.WaitGroup) {
+				quit := make(chan bool)
+				c.Consume(func(msgs []*memphis.Msg, err error) {
+					if err == nil {
+						for _, m := range msgs {
+							m.Ack()
+						}
+					} else {
+						quit <- true
 					}
-				}
-			}
-		})
-		_ = <-done
+				})
+				<-quit
+				wg.Done()
+				return
+			}(consumers[i], &wg1)
+		}
+		wg1.Wait()
 	}
 
 	elapsed := time.Since(start).Seconds()
 	msgsPerSec := float64(msgsCount) / float64(elapsed)
 	mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
 
-	fmt.Printf("operation type: %s, msgs/sec: %v, MB/sec: %.2f", opType, math.Ceil(msgsPerSec), mbPerSec)
+	fmt.Printf("operation type: %s, msgs/sec: %v, MB/sec: %.2f total time: %.2f: ", opType, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
 }
