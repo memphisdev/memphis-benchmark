@@ -22,32 +22,56 @@ func getMsgInSize(len int) []byte {
 }
 
 func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int) {
-	opType := (strings.Split(os.Args[1], "="))[1]
+	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString, batchTTWString, concurrencyString string
+
+	if len(os.Args) < 2 {
+		opType = os.Getenv("OP_TYPE")
+		msgSizeString = os.Getenv("MSG_SIZE")
+		msgsCountString = os.Getenv("MSG_COUNT")
+		host = os.Getenv("HOST")
+		username = os.Getenv("USERNAME")
+		token = os.Getenv("TOKEN")
+		storageTypeString = os.Getenv("STORAGE_TYPE")
+		replicasString = os.Getenv("REPLICAS")
+		cg = os.Getenv("CG")
+		pullIntervalString = os.Getenv("PULL_INTERVAL")
+		batchSizeString = os.Getenv("BATCH_SIZE")
+		batchTTWString = os.Getenv("BATCH_TTW")
+		concurrencyString = os.Getenv("CONCURRENCY")
+	} else {
+		opType = (strings.Split(os.Args[1], "="))[1]
+		msgSizeString = (strings.Split(os.Args[2], "="))[1]
+		msgsCountString = (strings.Split(os.Args[3], "="))[1]
+		host = (strings.Split(os.Args[4], "="))[1]
+		username = (strings.Split(os.Args[5], "="))[1]
+		token = (strings.Split(os.Args[6], "="))[1]
+		storageTypeString = (strings.Split(os.Args[7], "="))[1]
+		replicasString = (strings.Split(os.Args[8], "="))[1]
+		cg = (strings.Split(os.Args[9], "="))[1]
+		pullIntervalString = (strings.Split(os.Args[10], "="))[1]
+		batchSizeString = (strings.Split(os.Args[11], "="))[1]
+		batchTTWString = (strings.Split(os.Args[12], "="))[1]
+		concurrencyString = (strings.Split(os.Args[13], "="))[1]
+	}
+
 	if opType != "produce" && opType != "consume" {
 		fmt.Println("opType has to be 1 of the following produce/consume")
 		os.Exit(1)
 	}
 
-	msgSizeString := (strings.Split(os.Args[2], "="))[1]
 	msgSize, err := strconv.Atoi(msgSizeString)
 	if err != nil || msgSize <= 0 {
 		fmt.Println("msgSize has to be a positive number")
 		os.Exit(1)
 	}
 
-	msgsCountString := (strings.Split(os.Args[3], "="))[1]
 	msgsCount, err := strconv.Atoi(msgsCountString)
 	if err != nil || msgsCount <= 0 {
 		fmt.Println("msgCount has to be a positive number")
 		os.Exit(1)
 	}
 
-	host := (strings.Split(os.Args[4], "="))[1]
-	username := (strings.Split(os.Args[5], "="))[1]
-	token := (strings.Split(os.Args[6], "="))[1]
-
 	storageType := memphis.File
-	storageTypeString := (strings.Split(os.Args[7], "="))[1]
 	if storageTypeString == "file" {
 		storageType = memphis.File
 	} else if storageTypeString == "memory" {
@@ -57,16 +81,12 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	replicasString := (strings.Split(os.Args[8], "="))[1]
 	replicas, err := strconv.Atoi(replicasString)
 	if err != nil || replicas <= 0 || replicas > 5 {
 		fmt.Println("replicas has to be a positive number between 1-5")
 		os.Exit(1)
 	}
 
-	cg := (strings.Split(os.Args[9], "="))[1]
-
-	pullIntervalString := (strings.Split(os.Args[10], "="))[1]
 	pullIntervalInt, err := strconv.Atoi(pullIntervalString)
 	if err != nil || pullIntervalInt <= 0 {
 		fmt.Println("pullInterval has to be a positive number")
@@ -74,14 +94,12 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 	}
 	pullInterval := time.Duration(pullIntervalInt) * time.Microsecond
 
-	batchSizeString := (strings.Split(os.Args[11], "="))[1]
 	batchSize, err := strconv.Atoi(batchSizeString)
 	if err != nil || batchSize <= 0 {
 		fmt.Println("batchSize has to be a positive number")
 		os.Exit(1)
 	}
 
-	batchTTWString := (strings.Split(os.Args[12], "="))[1]
 	batchTTWInt, err := strconv.Atoi(batchTTWString)
 	if err != nil || batchTTWInt <= 0 {
 		fmt.Println("batchTTW has to be a positive number")
@@ -89,7 +107,6 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 	}
 	batchTTW := time.Duration(batchTTWInt) * time.Microsecond
 
-	concurrencyString := (strings.Split(os.Args[13], "="))[1]
 	concurrency, err := strconv.Atoi(concurrencyString)
 	if err != nil || batchSize <= 0 {
 		fmt.Println("concurrency has to be a positive number")
