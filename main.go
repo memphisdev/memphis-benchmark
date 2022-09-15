@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,6 +11,13 @@ import (
 
 	"github.com/memphisdev/memphis.go"
 )
+
+type ExtConn struct {
+	c    *memphis.Conn
+	s    *memphis.Station
+	p    *memphis.Producer
+	cons *memphis.Consumer
+}
 
 func getMsgInSize(len int) []byte {
 	bytes := make([]byte, len)
@@ -119,44 +125,41 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 func main() {
 	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency := validateArgs()
 
-	c, err := memphis.Connect(host, username, token)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	defer c.Close()
-
 	timestamp := strconv.Itoa(int(time.Now().Unix()))
-	s, err := c.CreateStation("station_"+timestamp,
-		"benchmarks_factory",
-		memphis.StorageTypeOpt(storageType),
-		memphis.Replicas(replicas),
-	)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	defer s.Destroy()
-
-	// produce
 	msg := getMsgInSize(msgSize)
-
-	concurrencyFactor := runtime.NumCPU()
+	concurrencyFactor := 150
 	if concurrency < concurrencyFactor {
 		concurrencyFactor = concurrency
 	}
 
-	var producers []*memphis.Producer
+	var extConn []*ExtConn
 	for i := 0; i < concurrencyFactor; i++ {
+		c, err := memphis.Connect(host, username, token)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		s, err := c.CreateStation("station_"+timestamp,
+			"benchmarks_factory",
+			memphis.StorageTypeOpt(storageType),
+			memphis.Replicas(replicas),
+		)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
 		index := strconv.Itoa(i)
 		p, err := s.CreateProducer("prod_" + index)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		producers = append(producers, p)
+		extConn = append(extConn, &ExtConn{c: c, s: s, p: p})
 	}
 
+	// produce
 	var start time.Time
 	if opType == "produce" {
 		start = time.Now()
@@ -174,42 +177,41 @@ func main() {
 			count = msgsCount / concurrencyFactor
 		}
 
-		go func(p *memphis.Producer, msg []byte, count int, wg *sync.WaitGroup) {
+		go func(ec *ExtConn, msg []byte, count int, wg *sync.WaitGroup) {
 			for i := 0; i < count; i++ {
-				p.Produce(msg)
+				ec.p.Produce(msg)
 			}
 			wg.Done()
-		}(producers[i], msg, count, &wg)
+		}(extConn[i], msg, count, &wg)
 	}
 	wg.Wait()
 
 	// consume
 	if opType == "consume" {
-		var consumers []*memphis.Consumer
 		for i := 0; i < concurrencyFactor; i++ {
 			index := strconv.Itoa(i)
-			cons, err := s.CreateConsumer("cons_"+index,
+			cons, err := extConn[i].s.CreateConsumer("cons_"+index,
 				memphis.ConsumerGroup(cg),
 				memphis.PullInterval(pullInterval),
 				memphis.BatchSize(batchSize),
 				memphis.BatchMaxWaitTime(batchTTW),
 			)
-
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
 			}
-			consumers = append(consumers, cons)
+
+			extConn[i].cons = cons
 		}
 
 		start = time.Now()
-
 		var wg1 sync.WaitGroup
 		wg1.Add(concurrencyFactor)
+
 		for i := 0; i < concurrencyFactor; i++ {
-			go func(c *memphis.Consumer, wg *sync.WaitGroup) {
+			go func(ec *ExtConn, wg *sync.WaitGroup) {
 				quit := make(chan bool)
-				c.Consume(func(msgs []*memphis.Msg, err error) {
+				ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
 					if err == nil {
 						for _, m := range msgs {
 							m.Ack()
@@ -220,8 +222,7 @@ func main() {
 				})
 				<-quit
 				wg.Done()
-				return
-			}(consumers[i], &wg1)
+			}(extConn[i], &wg1)
 		}
 		wg1.Wait()
 	}
@@ -229,6 +230,11 @@ func main() {
 	elapsed := time.Since(start).Seconds()
 	msgsPerSec := float64(msgsCount) / float64(elapsed)
 	mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
+
+	for i := 0; i < concurrencyFactor; i++ {
+		extConn[i].s.Destroy()
+		extConn[i].c.Close()
+	}
 
 	fmt.Printf("operation type: %s, msgs/sec: %v, MB/sec: %.2f total time: %.2f: ", opType, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
 }

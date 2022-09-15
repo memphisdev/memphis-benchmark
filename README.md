@@ -17,3 +17,4 @@ CONCURRENCY
 
 pullInterval/batchTTW - in microseconds
 msgSize - bytes
+concurrency - represents the number of go routines the program will create - max is 150
