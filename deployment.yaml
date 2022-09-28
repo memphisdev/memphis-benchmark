@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: memphis-benchmark
-        image: memphisos/memphis-benchmark:0.0.2
+        image: memphisos/memphis-benchmark:0.0.3
         imagePullPolicy: Always 
         command: [ "/bin/sh", "-c", "--" ]
         args: [ "while true; do sleep 30; done;" ]
