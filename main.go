@@ -141,7 +141,6 @@ func main() {
 		}
 
 		s, err := c.CreateStation("station_"+timestamp,
-			"benchmarks_factory",
 			memphis.StorageTypeOpt(storageType),
 			memphis.Replicas(replicas),
 		)
