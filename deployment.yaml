@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memphis-benchmark
+  labels:
+    app: memphis-benchmark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memphis-benchmark
+  template:
+    metadata:
+      labels:
+        app: memphis-benchmark
+    spec:
+      containers:
+      - name: memphis-benchmark
+        image: memphisos/memphis-benchmark:0.0.1
+        imagePullPolicy: Always 
+        command: [ "/bin/sh", "-c", "--" ]
+        args: [ "while true; do sleep 30; done;" ]
+      nodeSelector:
+        Application: "memphis_benchmark"
