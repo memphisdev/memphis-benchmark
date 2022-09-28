@@ -1,5 +1,7 @@
 github.com/memphisdev/memphis.go v0.1.3 h1:8VJlWb5Qw/S+4tvf4fZcMG8OB0+KtxPW9ZfkyK3gRFM=
 github.com/memphisdev/memphis.go v0.1.3/go.mod h1:pLgEDXqWE3OeFbzfx4mgy/LcdNZlg1LcmDI9SW1ah/k=
+github.com/memphisdev/memphis.go v0.1.4 h1:8uk3w6pWPuiL5mlTrrZSJILuHljEEmob3hD4ooOEISA=
+github.com/memphisdev/memphis.go v0.1.4/go.mod h1:pLgEDXqWE3OeFbzfx4mgy/LcdNZlg1LcmDI9SW1ah/k=
 github.com/nats-io/nats.go v1.16.0 h1:zvLE7fGBQYW6MWaFaRdsgm9qT39PJDQoju+DS8KsO1g=
 github.com/nats-io/nats.go v1.16.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nkeys v0.3.0 h1:cgM5tL53EvYRU+2YLXIK0G2mJtK12Ft9oeooSZMA2G8=
