@@ -235,5 +235,5 @@ func main() {
 		extConn[i].c.Close()
 	}
 
-	fmt.Printf("operation type: %s, msgs/sec: %v, MB/sec: %.2f total time: %.2f: ", opType, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
+	fmt.Printf("operation: %s, msgs/sec: %v, MB/sec: %.2f time: %.2f: ", opType, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
 }
