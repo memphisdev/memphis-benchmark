@@ -1,4 +1,4 @@
-go run main.go opType=produce/consume msgSize=1050 msgCount=1000000 host=localhost username=root token=memphis storageType=file/memory replicas=1 cg=cg1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10
+go run main.go opType=produce/consume msgSize=1050 msgCount=1000000 host=localhost username=root token=memphis storageType=file/memory replicas=1 cg=cg1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 iterations=1 stationsCount=1
 
 or go run main.go with the following environment variables
 OP_TYPE
@@ -14,6 +14,8 @@ PULL_INTERVAL
 BATCH_SIZE
 BATCH_TTW
 CONCURRENCY
+ITERATIONS
+STATIONS_COUNT
 
 pullInterval/batchTTW - in microseconds
 msgSize - bytes
