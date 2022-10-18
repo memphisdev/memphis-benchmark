@@ -27,8 +27,8 @@ func getMsgInSize(len int) []byte {
 	return bytes
 }
 
-func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, int) {
-	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString, batchTTWString, concurrencyString, iterationsString, stationsCountString string
+func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, int, bool) {
+	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString, batchTTWString, concurrencyString, iterationsString, stationsCountString, printHeadersString string
 
 	if len(os.Args) < 2 {
 		opType = os.Getenv("OP_TYPE")
@@ -46,6 +46,7 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		concurrencyString = os.Getenv("CONCURRENCY")
 		iterationsString = os.Getenv("ITERATIONS")
 		stationsCountString = os.Getenv("STATIONS_COUNT")
+		printHeadersString = os.Getenv("PRINT_HEADERS")
 	} else {
 		opType = (strings.Split(os.Args[1], "="))[1]
 		msgSizeString = (strings.Split(os.Args[2], "="))[1]
@@ -62,6 +63,7 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		concurrencyString = (strings.Split(os.Args[13], "="))[1]
 		iterationsString = (strings.Split(os.Args[14], "="))[1]
 		stationsCountString = (strings.Split(os.Args[15], "="))[1]
+		printHeadersString = (strings.Split(os.Args[16], "="))[1]
 	}
 
 	if opType != "produce" && opType != "consume" {
@@ -135,18 +137,26 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, stationsCount
+	printHeaders, err := strconv.ParseBool(printHeadersString)
+	if err != nil {
+		printHeaders = false
+	}
+
+	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, stationsCount, printHeaders
 }
 
 func main() {
-	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, stationsCount := validateArgs()
+	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, stationsCount, printHeaders := validateArgs()
 	msg := getMsgInSize(msgSize)
 	concurrencyFactor := 150
 	if concurrency < concurrencyFactor {
 		concurrencyFactor = concurrency
 	}
 
-	fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,stations,msgs/sec,MB/sec,time")
+	if printHeaders {
+		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,stations,msgs/sec,MB/sec,time")
+	}
+	
 	for i := 0; i < iterations; i++ {
 		index_iterations := strconv.Itoa(i)
 		timestamp := strconv.Itoa(int(time.Now().Unix()))
@@ -262,7 +272,7 @@ func main() {
 		mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
 
 		for i := 0; i < concurrencyFactor; i++ {
-			// extConn[i].s.Destroy()
+			extConn[i].s.Destroy()
 			extConn[i].c.Close()
 		}
 
