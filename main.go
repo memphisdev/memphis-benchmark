@@ -156,7 +156,7 @@ func main() {
 	if printHeaders {
 		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,stations,msgs/sec,MB/sec,time")
 	}
-	
+
 	for i := 0; i < iterations; i++ {
 		index_iterations := strconv.Itoa(i)
 		timestamp := strconv.Itoa(int(time.Now().Unix()))
@@ -190,7 +190,7 @@ func main() {
 			}
 
 			s := stations[i%stationsCount]
-			
+
 			p, err := s.CreateProducer("prod_" + index_concurrency)
 			if err != nil {
 				fmt.Println(err.Error())
@@ -277,5 +277,9 @@ func main() {
 		}
 
 		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%.2f,%.2f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrency, stationsCount, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
+
+		if i < iterations {
+			time.Sleep(5 * time.Second)
+		}
 	}
 }
