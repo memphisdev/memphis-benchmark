@@ -235,6 +235,7 @@ func main() {
 					memphis.PullInterval(pullInterval),
 					memphis.BatchSize(batchSize),
 					memphis.BatchMaxWaitTime(batchTTW),
+					// memphis.ConsumerErrorHandler(nil),
 				)
 				if err != nil {
 					fmt.Println(err.Error())
@@ -261,6 +262,7 @@ func main() {
 						}
 					})
 					<-quit
+					ec.cons.Destroy()
 					wg.Done()
 				}(extConn[i], &wg1)
 			}
