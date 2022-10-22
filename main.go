@@ -235,7 +235,7 @@ func main() {
 					memphis.PullInterval(pullInterval),
 					memphis.BatchSize(batchSize),
 					memphis.BatchMaxWaitTime(batchTTW),
-					memphis.ConsumerErrorHandler(nil),
+					// memphis.ConsumerErrorHandler(nil),
 				)
 				if err != nil {
 					fmt.Println(err.Error())
