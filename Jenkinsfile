@@ -18,6 +18,19 @@ node {
     stage('Build and push docker image to Docker Hub') {
       sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${versionTag} --tag ${repoUrlPrefix}/${imageName} --platform linux/amd64,linux/arm64 ." 
     }
+
+    stage('Install terraform'){
+      sh'sudo yum install -y yum-utils'
+      sh'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo'
+      sh'sudo yum -y install terraform'
+    }
+
+    stage('Deploy new K8s cluster'){
+      dir ('memphis-terraform'){
+        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark' 
+        sh'make -C ./AWS/EKS/ infra'
+      }
+    }
 	  
     notifySuccessful()
 	  
