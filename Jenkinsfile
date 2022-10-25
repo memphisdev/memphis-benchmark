@@ -16,7 +16,7 @@ node {
     }
 	  
     stage('Build and push docker image to Docker Hub') {
-      sh "docker buildx build . --platform linux/amd64,linux/arm64 --tag ${repoUrlPrefix}/${imageName}:${versionTag} --tag ${repoUrlPrefix}/${imageName}"
+      sh 'docker buildx build --platform linux/amd64,linux/arm64 --tag ${repoUrlPrefix}/${imageName}:${versionTag} --tag ${repoUrlPrefix}/${imageName} .' 
     }
 	  
     notifySuccessful()
