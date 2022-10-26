@@ -28,9 +28,14 @@ node {
     stage('Deploy new K8s+Memphis cluster'){
       dir ('memphis-terraform'){
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
+        //sh 'cd ./AWS/EKS/ && make infra'
+	//sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
+      }
+    }
+	  
+    stage('Deploy memphis cluster'){
+      dir ('memphis-k8s'){
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
-        sh 'cd ./AWS/EKS/ && make infra'
-	sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
       }
     }
     
@@ -51,7 +56,7 @@ node {
 	  
   } catch (e) {
       currentBuild.result = "FAILED"
-      cleanWs()
+      //cleanWs()
       notifyFailed()
       throw e
   }
