@@ -212,7 +212,7 @@ func main() {
 
 			go func(ec *ExtConn, msg []byte, count int, wg *sync.WaitGroup) {
 				for i := 0; i < count; i++ {
-					ec.p.Produce(msg)
+					ec.p.Produce(msg) // ec.p.Produce(msg, memphis.AsyncProduce())
 				}
 				wg.Done()
 			}(extConn[i], msg, count, &wg)
