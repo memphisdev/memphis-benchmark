@@ -28,14 +28,15 @@ node {
     stage('Deploy new K8s+Memphis cluster'){
       dir ('memphis-terraform'){
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
-        //sh 'cd ./AWS/EKS/ && make infra'
-	//sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
       }
+      sh 'make -C memphis-terraform/AWS/EKS/ infra'
+      sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
     }
 	  
     stage('Deploy memphis cluster'){
       dir ('memphis-k8s'){
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
+	sh(script: """helm install my-memphis memphis --set analytics='false',cluster.enabled="true" --create-namespace --namespace memphis""",returnStdout: true)
       }
     }
     
