@@ -20,15 +20,25 @@ node {
     }
 
     stage('Install terraform'){
-      sh'sudo yum install -y yum-utils'
-      sh'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo'
-      sh'sudo yum -y install terraform'
+      sh 'sudo yum install -y yum-utils'
+      sh 'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo'
+      sh 'sudo yum -y install terraform'
     }
 
-    stage('Deploy new K8s cluster'){
+    stage('Deploy new K8s+Memphis cluster'){
       dir ('memphis-terraform'){
-        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark' 
-        sh'make -C ./AWS/EKS/ infra'
+        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
+	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
+        sh 'cd ./AWS/EKS/ && make infra'
+      }
+    }
+    
+	  
+    stage('Deploy memphis benchmark tool'){
+      dir ('memphis-benchmark'){
+        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-benchmark.git', branch: 'master'
+        sh 'kubectl create ns memphis-benchmark'
+	sh 'kubectl apply -f deployment.yaml'
       }
     }
 	  
