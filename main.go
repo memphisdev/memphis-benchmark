@@ -219,11 +219,11 @@ func main() {
 
 			go func(ec *ExtConn, msg []byte, count int, wg *sync.WaitGroup) {
 				for i := 0; i < count; i++ {
-					// if asyncProduce {
-						// ec.p.Produce(msg, memphis.AsyncProduce())
-					// } else {
-					ec.p.Produce(msg)
-					// }
+					if asyncProduce {
+						ec.p.Produce(msg) // ec.p.Produce(msg, memphis.AsyncProduce())
+					} else {
+						ec.p.Produce(msg)
+					}
 				}
 				wg.Done()
 			}(extConn[i], msg, count, &wg)
@@ -234,7 +234,7 @@ func main() {
 		if opType == "consume" {
 			for i := 0; i < concurrencyFactor; i++ {
 				index := strconv.Itoa(i)
-				cons, err := extConn[i].c.CreateConsumer(extConn[i].sName ,"cons_"+index,
+				cons, err := extConn[i].c.CreateConsumer(extConn[i].sName, "cons_"+index,
 					memphis.ConsumerGroup(cg),
 					memphis.PullInterval(pullInterval),
 					memphis.BatchSize(batchSize),
