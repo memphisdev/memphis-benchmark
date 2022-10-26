@@ -30,6 +30,7 @@ node {
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
         sh 'cd ./AWS/EKS/ && make infra'
+	sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
       }
     }
     
@@ -41,6 +42,9 @@ node {
 	sh(script: """kubectl create secret generic benchmark-config --from-literal=CONNECTION_TOKEN=\$(kubectl get secret memphis-creds -n memphis -o jsonpath="{.data.CONNECTION_TOKEN}"| base64 --decode) -n memphis-benchmark""", returnStdout: true)
 	sh 'kubectl apply -f deployment.yaml'
       }
+    }
+    stage('Run benchmarks'){
+      sh(script: """kubectl -n memphis-benchmark exec -it \$(get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> sheets.scv""", returnStdout: true)
     }
 	  
     notifySuccessful()
