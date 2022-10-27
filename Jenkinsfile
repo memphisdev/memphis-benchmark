@@ -16,7 +16,7 @@ node {
     }
 	  
     stage('Build and push docker image to Docker Hub') {
-      //sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${versionTag} --tag ${repoUrlPrefix}/${imageName} --platform linux/amd64,linux/arm64 ." 
+      sh "docker buildx build --push --tag ${repoUrlPrefix}/${imageName}:${versionTag} --tag ${repoUrlPrefix}/${imageName} --platform linux/amd64,linux/arm64 ." 
     }
 
     stage('Install terraform'){
@@ -25,7 +25,7 @@ node {
       sh 'sudo yum -y install terraform'
     }
 
-    stage('Deploy new K8s+Memphis cluster'){
+    stage('Deploy new K8s cluster'){
       dir ('memphis-terraform'){
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
       }
