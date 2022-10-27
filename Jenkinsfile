@@ -66,7 +66,7 @@ node {
   } catch (e) {
       currentBuild.result = "FAILED"
       sh 'make -C memphis-terraform/AWS/EKS/ destroyinfra'
-      cleanWs()
+      //cleanWs()
       notifyFailed()
       throw e
   }
