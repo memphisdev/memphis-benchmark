@@ -45,7 +45,7 @@ node {
       dir ('memphis-benchmark'){
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-benchmark.git', branch: 'master'
         sh 'kubectl create ns memphis-benchmark'
-	sh(script: """kubectl create secret generic benchmark-config --from-literal=CONNECTION_TOKEN=\$(kubectl get secret memphis-creds -n memphis -o jsonpath="{.data.CONNECTION_TOKEN}"| base64 --decode) -n memphis-benchmark""", returnStdout: true)
+	sh(script: """kubectl create secret generic benchmark-config --from-literal=TOKEN=\$(kubectl get secret memphis-creds -n memphis -o jsonpath="{.data.CONNECTION_TOKEN}"| base64 --decode) -n memphis-benchmark""", returnStdout: true)
 	sh 'kubectl apply -f deployment.yaml'
       }
     }
