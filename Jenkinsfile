@@ -49,16 +49,23 @@ node {
 	sh 'kubectl apply -f deployment.yaml'
       }
     }
+	  
     stage('Run benchmarks'){
       sh(script: """kubectl -n memphis-benchmark exec -it \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark_\$(date '+%Y-%m-%d').scv""", returnStdout: true)
       sh(script: """aws s3 cp benchmark_\$(date '+%Y-%m-%d').scv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').scv""", returnStdout: true)
+    }
+	 
+    stage('Destroy k8s cluster'){
+      dir ('memphis-terraform/AWS/EKS/') {
+        sh 'make destroyinfra'
+      }
     }
 	  
     notifySuccessful()
 	  
   } catch (e) {
       currentBuild.result = "FAILED"
-      //cleanWs()
+      cleanWs()
       notifyFailed()
       throw e
   }
