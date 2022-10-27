@@ -8,4 +8,5 @@ ENV GOPATH="/go/src"
 WORKDIR /run
 
 COPY --from=build $GOPATH/run.sh .
+RUN chmod +x ./run.sh
 COPY --from=build $GOPATH/memphis-benchmarks .
