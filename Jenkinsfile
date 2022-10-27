@@ -30,7 +30,7 @@ node {
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
       }
       sh 'make -C memphis-terraform/AWS/EKS/ infra'
-      sh(script: """aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
+      sh(script: """cd memphis-terraform/AWS/EKS/ && aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
     }
 	  
     stage('Deploy memphis cluster'){
@@ -50,7 +50,7 @@ node {
       }
     }
     stage('Run benchmarks'){
-      sh(script: """kubectl -n memphis-benchmark exec -it \$(get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> sheets.scv""", returnStdout: true)
+      sh(script: """kubectl -n memphis-benchmark exec -it \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> sheets.scv""", returnStdout: true)
     }
 	  
     notifySuccessful()
