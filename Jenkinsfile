@@ -38,7 +38,7 @@ node {
     stage('Deploy memphis cluster'){
       dir ('memphis-k8s'){
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
-	sh(script: """helm install my-memphis memphis --set analytics='false',cluster.enabled="true" --create-namespace --namespace memphis""",returnStdout: true)
+	sh(script: """helm install my-memphis memphis --set analytics='false',cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
       }
     }
     
