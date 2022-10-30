@@ -56,7 +56,7 @@ node {
       sh(script: """until kubectl get pods --selector=app=memphis-benchmark -o=jsonpath="{.items[*].status.phase}" -n memphis-benchmark  | grep -q "Running" ; do sleep 1; done""", returnStdout: true)
       sh 'sleep 10'
       sh("""kubectl -n memphis-benchmark exec -i \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark.csv""")
-      sh(script: """aws s3 cp benchmark_\$(date '+%Y-%m-%d').csv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').csv""", returnStdout: true)
+      sh(script: """aws s3 cp benchmark.csv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').csv""", returnStdout: true)
     }
 	 
     stage('Destroy k8s cluster'){
