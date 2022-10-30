@@ -20,9 +20,11 @@ node {
     }
 
     stage('Install terraform'){
-      sh 'sudo yum install -y yum-utils'
-      sh 'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo'
-      sh 'sudo yum -y install terraform'
+      sh """
+      	sudo yum install -y yum-utils'
+      	sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo'
+      	sudo yum -y install terraform'
+      """
     }
 
     stage('Deploy new K8s cluster'){
@@ -53,7 +55,7 @@ node {
     stage('Run benchmarks'){
       sh(script: """until kubectl get pods --selector=app=memphis-benchmark -o=jsonpath="{.items[*].status.phase}" -n memphis-benchmark  | grep -q "Running" ; do sleep 1; done""", returnStdout: true)
       sh 'sleep 10'
-      sh(script: """kubectl -n memphis-benchmark exec -i \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark.csv""", returnStdout: true)
+      sh("""kubectl -n memphis-benchmark exec -i \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark.csv""")
       sh(script: """aws s3 cp benchmark_\$(date '+%Y-%m-%d').csv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').csv""", returnStdout: true)
     }
 	 
