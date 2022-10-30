@@ -53,10 +53,12 @@ node {
     }
 	  
     stage('Run benchmarks'){
-      sh(script: """until kubectl get pods --selector=app=memphis-benchmark -o=jsonpath="{.items[*].status.phase}" -n memphis-benchmark  | grep -q "Running" ; do sleep 1; done""", returnStdout: true)
-      sh 'sleep 10'
-      sh("""kubectl -n memphis-benchmark exec -i \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark.csv""")
-      sh(script: """aws s3 cp benchmark.csv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').csv""", returnStdout: true)
+      sh """
+      	until kubectl get pods --selector=app=memphis-benchmark -o=jsonpath="{.items[*].status.phase}" -n memphis-benchmark  | grep -q "Running" ; do sleep 1; done
+      	sleep 10
+      	kubectl -n memphis-benchmark exec -i \$(kubectl get pods -n memphis-benchmark -o jsonpath="{.items[0].metadata.name}") -- ./run.sh >> benchmark.csv
+      	aws s3 cp benchmark.csv s3://memphis-benchmarks/\$(date '+%Y-%m-%d')/benchmark_\$(date '+%Y-%m-%d').csv
+      """
     }
 	 
     stage('Destroy k8s cluster'){
@@ -70,7 +72,7 @@ node {
   } catch (e) {
       currentBuild.result = "FAILED"
       sh 'make -C memphis-terraform/AWS/EKS/ destroyinfra'
-      //cleanWs()
+      cleanWs()
       notifyFailed()
       throw e
   }
