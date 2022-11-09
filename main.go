@@ -168,7 +168,7 @@ func main() {
 		index_concurrency := strconv.Itoa(i)
 		c, err := memphis.Connect(host, username, token)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("Connect: " + err.Error())
 			os.Exit(1)
 		}
 
@@ -180,7 +180,7 @@ func main() {
 					memphis.Replicas(replicas),
 				)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Println("CreateStation: " + err.Error())
 					os.Exit(1)
 				}
 
@@ -192,7 +192,7 @@ func main() {
 
 		p, err := c.CreateProducer(s.Name, "prod_"+index_concurrency)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("CreateProducer: " + err.Error())
 			os.Exit(1)
 		}
 		extConn = append(extConn, &ExtConn{c: c, s: s, sName: s.Name, p: p})
@@ -220,7 +220,7 @@ func main() {
 			go func(ec *ExtConn, msg []byte, count int, wg *sync.WaitGroup) {
 				for i := 0; i < count; i++ {
 					if asyncProduce {
-						ec.p.Produce(msg) // ec.p.Produce(msg, memphis.AsyncProduce())
+						ec.p.Produce(msg, memphis.AsyncProduce())
 					} else {
 						ec.p.Produce(msg)
 					}
@@ -239,10 +239,10 @@ func main() {
 					memphis.PullInterval(pullInterval),
 					memphis.BatchSize(batchSize),
 					memphis.BatchMaxWaitTime(batchTTW),
-					// memphis.ConsumerErrorHandler(nil),
+					memphis.ConsumerErrorHandler(nil),
 				)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Println("CreateConsumer: " + err.Error())
 					os.Exit(1)
 				}
 
