@@ -1,4 +1,4 @@
-go run main.go opType=produce/consume msgSize=1050 msgCount=1000000 host=localhost username=root token=memphis storageType=file/memory replicas=1 cg=cg1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 iterations=1 stationsCount=1 printHeaders=true asyncProduce=false
+go run main.go opType=produce/consume msgSize=1050 msgCount=1000000 host=localhost username=root token=memphis storageType=file/memory replicas=1 cg=cg1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 iterations=1 stationsCount=1 printHeaders=true asyncProduce=false deleteStations=false
 
 or go run main.go with the following environment variables
 OP_TYPE
@@ -18,6 +18,7 @@ ITERATIONS
 STATIONS_COUNT
 PRINT_HEADERS
 ASYNC_PRODUCE
+DELETE_STATIONS
 
 pullInterval/batchTTW - in microseconds
 msgSize - bytes
