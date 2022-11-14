@@ -13,11 +13,9 @@ import (
 )
 
 type ExtConn struct {
-	c     *memphis.Conn
-	s     *memphis.Station
-	sName string
-	p     *memphis.Producer
-	cons  *memphis.Consumer
+	c    *memphis.Conn
+	p    *memphis.Producer
+	cons *memphis.Consumer
 }
 
 func getMsgInSize(len int) []byte {
@@ -28,10 +26,10 @@ func getMsgInSize(len int) []byte {
 	return bytes
 }
 
-func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, int, bool, bool, bool) {
+func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, bool, bool, bool, int) {
 	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString,
-		batchTTWString, concurrencyString, iterationsString, stationsCountString,
-		printHeadersString, asyncProduceString, deleteStationsString string
+		batchTTWString, concurrencyString, iterationsString,
+		printHeadersString, asyncProduceString, deleteStationsString, sleepMsString string
 
 	if len(os.Args) < 2 {
 		opType = os.Getenv("OP_TYPE")
@@ -48,10 +46,10 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		batchTTWString = os.Getenv("BATCH_TTW")
 		concurrencyString = os.Getenv("CONCURRENCY")
 		iterationsString = os.Getenv("ITERATIONS")
-		stationsCountString = os.Getenv("STATIONS_COUNT")
 		printHeadersString = os.Getenv("PRINT_HEADERS")
 		asyncProduceString = os.Getenv("ASYNC_PRODUCE")
 		deleteStationsString = os.Getenv("DELETE_STATIONS")
+		sleepMsString = os.Getenv("SLEEP_MS")
 	} else {
 		opType = (strings.Split(os.Args[1], "="))[1]
 		msgSizeString = (strings.Split(os.Args[2], "="))[1]
@@ -67,10 +65,10 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		batchTTWString = (strings.Split(os.Args[12], "="))[1]
 		concurrencyString = (strings.Split(os.Args[13], "="))[1]
 		iterationsString = (strings.Split(os.Args[14], "="))[1]
-		stationsCountString = (strings.Split(os.Args[15], "="))[1]
-		printHeadersString = (strings.Split(os.Args[16], "="))[1]
-		asyncProduceString = (strings.Split(os.Args[17], "="))[1]
-		deleteStationsString = (strings.Split(os.Args[18], "="))[1]
+		printHeadersString = (strings.Split(os.Args[15], "="))[1]
+		asyncProduceString = (strings.Split(os.Args[16], "="))[1]
+		deleteStationsString = (strings.Split(os.Args[17], "="))[1]
+		sleepMsString = (strings.Split(os.Args[18], "="))[1]
 	}
 
 	if opType != "produce" && opType != "consume" {
@@ -138,12 +136,6 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	stationsCount, err := strconv.Atoi(stationsCountString)
-	if err != nil || stationsCount <= 0 || stationsCount > concurrency {
-		fmt.Println("stations count has to be a positive number and not greater than the concurrency")
-		os.Exit(1)
-	}
-
 	printHeaders, err := strconv.ParseBool(printHeadersString)
 	if err != nil {
 		printHeaders = false
@@ -159,55 +151,59 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		printHeaders = false
 	}
 
-	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, stationsCount, printHeaders, asyncProduce, deleteStations
+	sleepMs, err := strconv.Atoi(sleepMsString)
+	if err != nil || sleepMs <= 0 {
+		fmt.Println("sleepMs has to be a positive number")
+		os.Exit(1)
+	}
+
+	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, printHeaders, asyncProduce, deleteStations, sleepMs
 }
 
 func main() {
-	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, stationsCount, printHeaders, asyncProduce, deleteStations := validateArgs()
+	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, printHeaders, asyncProduce, deleteStations, sleepMs := validateArgs()
 	msg := getMsgInSize(msgSize)
 
 	if printHeaders {
-		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,stations,msgs/sec,MB/sec,time")
+		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,msgs/sec,MB/sec,time")
 	}
 
-	var extConn []*ExtConn
-	var stations []*memphis.Station
-	for i := 0; i < concurrencyFactor; i++ {
+	for i := 0; i < iterations; i++ {
 		timestamp := strconv.Itoa(int(time.Now().Unix()))
-		index_concurrency := strconv.Itoa(i)
+		iterationsCount := strconv.Itoa(i)
+		stationName := "station_" + timestamp + "_" + "_" + iterationsCount
+
 		c, err := memphis.Connect(host, username, token)
 		if err != nil {
 			fmt.Println("Connect: " + err.Error())
 			os.Exit(1)
 		}
-
-		if i == 0 { // create stations on the first iteration only
-			for j := 0; j < stationsCount; j++ {
-				index_stations := strconv.Itoa(j)
-				s, err := c.CreateStation("station_"+timestamp+"_"+"_"+index_stations,
-					memphis.StorageTypeOpt(storageType),
-					memphis.Replicas(replicas),
-				)
-				if err != nil {
-					fmt.Println("CreateStation: " + err.Error())
-					os.Exit(1)
-				}
-
-				stations = append(stations, s)
-			}
-		}
-
-		s := stations[i%stationsCount]
-
-		p, err := c.CreateProducer(s.Name, "prod_"+index_concurrency)
+		s, err := c.CreateStation(stationName,
+			memphis.StorageTypeOpt(storageType),
+			memphis.Replicas(replicas),
+		)
 		if err != nil {
-			fmt.Println("CreateProducer: " + err.Error())
+			fmt.Println("CreateStation: " + err.Error())
 			os.Exit(1)
 		}
-		extConn = append(extConn, &ExtConn{c: c, s: s, sName: s.Name, p: p})
-	}
 
-	for i := 0; i < iterations; i++ {
+		var extConn []*ExtConn
+		for i := 0; i < concurrencyFactor; i++ {
+			indexConcurrency := strconv.Itoa(i)
+			c, err := memphis.Connect(host, username, token)
+			if err != nil {
+				fmt.Println("Connect: " + err.Error())
+				os.Exit(1)
+			}
+
+			p, err := c.CreateProducer(stationName, "prod_"+indexConcurrency)
+			if err != nil {
+				fmt.Println("CreateProducer: " + err.Error())
+				os.Exit(1)
+			}
+			extConn = append(extConn, &ExtConn{c: c, p: p})
+		}
+
 		// produce
 		var start time.Time
 		if opType == "produce" {
@@ -243,12 +239,14 @@ func main() {
 		if opType == "consume" {
 			for i := 0; i < concurrencyFactor; i++ {
 				index := strconv.Itoa(i)
-				cons, err := extConn[i].c.CreateConsumer(extConn[i].sName, "cons_"+index,
+				cons, err := extConn[i].c.CreateConsumer(stationName, "cons_"+index,
 					memphis.ConsumerGroup(cg),
 					memphis.PullInterval(pullInterval),
 					memphis.BatchSize(batchSize),
 					memphis.BatchMaxWaitTime(batchTTW),
-					memphis.ConsumerErrorHandler(nil),
+					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+						return
+					}),
 				)
 				if err != nil {
 					fmt.Println("CreateConsumer: " + err.Error())
@@ -258,28 +256,30 @@ func main() {
 				extConn[i].cons = cons
 			}
 
-			start = time.Now()
 			var wg1 sync.WaitGroup
 			wg1.Add(concurrencyFactor)
 
 			for i := 0; i < concurrencyFactor; i++ {
 				go func(ec *ExtConn, wg *sync.WaitGroup) {
-					quit := make(chan bool)
+					var wg2 sync.WaitGroup
+					wg2.Add(1)
+					done := false
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
 						if err == nil {
 							for _, m := range msgs {
 								m.Ack()
 							}
-						} else {
-							quit <- true
+						} else if !done {
+							done = true
+							wg2.Done()
 						}
 					})
-					<-quit
-					ec.cons.Destroy()
-					ec.cons = nil
+					wg2.Wait()
 					wg.Done()
 				}(extConn[i], &wg1)
 			}
+
+			start = time.Now()
 			wg1.Wait()
 		}
 
@@ -287,12 +287,17 @@ func main() {
 		msgsPerSec := float64(msgsCount) / float64(elapsed)
 		mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
 
-		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%v,%f,%f,%f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrencyFactor, stationsCount, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
-	}
-
-	if deleteStations {
-		for i := 0; i < concurrencyFactor; i++ {
-			extConn[i].s.Destroy()
+		if deleteStations {
+			s.Destroy()
 		}
+
+		for i := 0; i < concurrencyFactor; i++ {
+			extConn[i].p.Destroy()
+			extConn[i].cons.Destroy()
+			extConn[i].c.Close()
+		}
+
+		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%f,%f,%f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrencyFactor, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
+		time.Sleep(time.Duration(sleepMs) * time.Millisecond)
 	}
 }
