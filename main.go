@@ -293,7 +293,9 @@ func main() {
 
 		for i := 0; i < concurrencyFactor; i++ {
 			extConn[i].p.Destroy()
-			extConn[i].cons.Destroy()
+			if opType == "consume" {
+				extConn[i].cons.Destroy()
+			}
 			extConn[i].c.Close()
 		}
 
