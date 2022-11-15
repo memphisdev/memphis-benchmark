@@ -312,14 +312,14 @@ func main() {
 		mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
 
 		for i := 0; i < concurrencyFactor; i++ {
-			extConn[i].p.Destroy()
+			// extConn[i].p.Destroy()
 			if opType == "consume" || opType == "e2e" {
 				extConn[i].cons.Destroy()
 			}
 			extConn[i].c.Close()
 		}
 		if deleteStations {
-			s.Destroy()
+			go s.Destroy()
 		}
 
 		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%f,%f,%f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrencyFactor, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
