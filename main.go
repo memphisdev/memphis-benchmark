@@ -71,7 +71,7 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		sleepMsString = (strings.Split(os.Args[18], "="))[1]
 	}
 
-	if opType != "produce" && opType != "consume" {
+	if opType != "produce" && opType != "consume" && opType != "e2e" {
 		fmt.Println("opType has to be 1 of the following produce/consume")
 		os.Exit(1)
 	}
@@ -163,7 +163,6 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 func main() {
 	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, printHeaders, asyncProduce, deleteStations, sleepMs := validateArgs()
 	msg := getMsgInSize(msgSize)
-
 	if printHeaders {
 		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,msgs/sec,MB/sec,time")
 	}
@@ -201,17 +200,36 @@ func main() {
 				fmt.Println("CreateProducer: " + err.Error())
 				os.Exit(1)
 			}
-			extConn = append(extConn, &ExtConn{c: c, p: p})
+
+			ec := ExtConn{c: c, p: p}
+			if opType == "e2e" || opType == "consume" {
+				cons, err := c.CreateConsumer(stationName, "cons_"+indexConcurrency,
+					memphis.ConsumerGroup(cg),
+					memphis.PullInterval(pullInterval),
+					memphis.BatchSize(batchSize),
+					memphis.BatchMaxWaitTime(batchTTW),
+					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+						return
+					}),
+				)
+				if err != nil {
+					fmt.Println("CreateConsumer: " + err.Error())
+					os.Exit(1)
+				}
+
+				ec.cons = cons
+			}
+
+			extConn = append(extConn, &ec)
 		}
 
 		// produce
-		var start time.Time
-		if opType == "produce" {
-			start = time.Now()
-		}
-
 		var wg sync.WaitGroup
 		wg.Add(concurrencyFactor)
+		if opType == "e2e" {
+			wg.Add(concurrencyFactor)
+		}
+
 		for i := 0; i < concurrencyFactor; i++ {
 			var count int
 			if concurrencyFactor-1 == 0 { // run with single producer
@@ -232,34 +250,8 @@ func main() {
 				}
 				wg.Done()
 			}(extConn[i], msg, count, &wg)
-		}
-		wg.Wait()
 
-		// consume
-		if opType == "consume" {
-			for i := 0; i < concurrencyFactor; i++ {
-				index := strconv.Itoa(i)
-				cons, err := extConn[i].c.CreateConsumer(stationName, "cons_"+index,
-					memphis.ConsumerGroup(cg),
-					memphis.PullInterval(pullInterval),
-					memphis.BatchSize(batchSize),
-					memphis.BatchMaxWaitTime(batchTTW),
-					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-						return
-					}),
-				)
-				if err != nil {
-					fmt.Println("CreateConsumer: " + err.Error())
-					os.Exit(1)
-				}
-
-				extConn[i].cons = cons
-			}
-
-			var wg1 sync.WaitGroup
-			wg1.Add(concurrencyFactor)
-
-			for i := 0; i < concurrencyFactor; i++ {
+			if opType == "e2e" {
 				go func(ec *ExtConn, wg *sync.WaitGroup) {
 					var wg2 sync.WaitGroup
 					wg2.Add(1)
@@ -276,6 +268,38 @@ func main() {
 					})
 					wg2.Wait()
 					wg.Done()
+				}(extConn[i], &wg)
+			}
+		}
+
+		var start time.Time
+		if opType == "produce" || opType == "e2e" {
+			start = time.Now()
+		}
+		wg.Wait()
+
+		// consume
+		if opType == "consume" {
+			var wg1 sync.WaitGroup
+			wg1.Add(concurrencyFactor)
+
+			for i := 0; i < concurrencyFactor; i++ {
+				go func(ec *ExtConn, wg1 *sync.WaitGroup) {
+					var wg2 sync.WaitGroup
+					wg2.Add(1)
+					done := false
+					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
+						if err == nil {
+							for _, m := range msgs {
+								m.Ack()
+							}
+						} else if !done {
+							done = true
+							wg2.Done()
+						}
+					})
+					wg2.Wait()
+					wg1.Done()
 				}(extConn[i], &wg1)
 			}
 
@@ -287,16 +311,15 @@ func main() {
 		msgsPerSec := float64(msgsCount) / float64(elapsed)
 		mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
 
-		if deleteStations {
-			s.Destroy()
-		}
-
 		for i := 0; i < concurrencyFactor; i++ {
 			extConn[i].p.Destroy()
-			if opType == "consume" {
+			if opType == "consume" || opType == "e2e" {
 				extConn[i].cons.Destroy()
 			}
 			extConn[i].c.Close()
+		}
+		if deleteStations {
+			s.Destroy()
 		}
 
 		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%f,%f,%f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrencyFactor, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
