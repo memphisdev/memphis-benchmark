@@ -26,10 +26,10 @@ func getMsgInSize(len int) []byte {
 	return bytes
 }
 
-func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, bool, bool, bool, int) {
+func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, bool, bool, bool, int, memphis.RetentionType, int) {
 	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString,
 		batchTTWString, concurrencyString, iterationsString,
-		printHeadersString, asyncProduceString, deleteStationsString, sleepMsString string
+		printHeadersString, asyncProduceString, deleteStationsString, sleepMsString, retentionTypeString, retentionValueString string
 
 	if len(os.Args) < 2 {
 		opType = os.Getenv("OP_TYPE")
@@ -50,6 +50,8 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		asyncProduceString = os.Getenv("ASYNC_PRODUCE")
 		deleteStationsString = os.Getenv("DELETE_STATIONS")
 		sleepMsString = os.Getenv("SLEEP_MS")
+		retentionTypeString = os.Getenv("RETENTION_TYPE")
+		retentionValueString = os.Getenv("RETENTION_VALUE")
 	} else {
 		opType = (strings.Split(os.Args[1], "="))[1]
 		msgSizeString = (strings.Split(os.Args[2], "="))[1]
@@ -69,6 +71,8 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		asyncProduceString = (strings.Split(os.Args[16], "="))[1]
 		deleteStationsString = (strings.Split(os.Args[17], "="))[1]
 		sleepMsString = (strings.Split(os.Args[18], "="))[1]
+		retentionTypeString = (strings.Split(os.Args[19], "="))[1]
+		retentionValueString = (strings.Split(os.Args[20], "="))[1]
 	}
 
 	if opType != "produce" && opType != "consume" && opType != "e2e" {
@@ -157,11 +161,25 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, printHeaders, asyncProduce, deleteStations, sleepMs
+	retentionType := memphis.MaxMessageAgeSeconds
+	if retentionTypeString == "msgs" {
+		retentionType = memphis.Messages
+	} else if storageTypeString == "bytes" {
+		retentionType = memphis.Bytes
+	}
+
+	retentionValue := 604800
+	retentionValue, err = strconv.Atoi(retentionValueString)
+	if err != nil || retentionValue <= 0 {
+		fmt.Println("retentionValue has to be a positive number")
+		os.Exit(1)
+	}
+
+	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, printHeaders, asyncProduce, deleteStations, sleepMs, retentionType, retentionValue
 }
 
 func main() {
-	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, printHeaders, asyncProduce, deleteStations, sleepMs := validateArgs()
+	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, printHeaders, asyncProduce, deleteStations, sleepMs, retentionType, retentionValue := validateArgs()
 	msg := getMsgInSize(msgSize)
 	if printHeaders {
 		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,msgs/sec,MB/sec,time")
@@ -180,6 +198,8 @@ func main() {
 		s, err := c.CreateStation(stationName,
 			memphis.StorageTypeOpt(storageType),
 			memphis.Replicas(replicas),
+			memphis.RetentionTypeOpt(retentionType),
+			memphis.RetentionVal(retentionValue),
 		)
 		if err != nil {
 			fmt.Println("CreateStation: " + err.Error())
