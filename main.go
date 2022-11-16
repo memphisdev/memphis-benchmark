@@ -307,8 +307,7 @@ func main() {
 					cmd.Stdout = &outb
 					err = cmd.Run()
 					if err != nil {
-						cmd := exec.Command("sh", "-c", command)
-						var outb bytes.Buffer
+						cmd = exec.Command("sh", "-c", command)
 						cmd.Stdout = &outb
 						err = cmd.Run()
 						if err != nil {
@@ -317,8 +316,6 @@ func main() {
 						}
 					}
 					cmdOut := outb.String()
-					fmt.Println(cmdOut)
-					fmt.Println(strings.Split(cmdOut, "  Messages: "))
 					cmdOut = strings.Split(cmdOut, "  Messages: ")[1]
 					cmdOut = strings.Split(cmdOut, "\n")[0]
 					cmdOut = strings.Replace(cmdOut, ",", "", -1)
