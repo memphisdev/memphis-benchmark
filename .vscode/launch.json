@@ -11,24 +11,22 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {
-                "OP_TYPE": "consume",
-                "MSG_SIZE": "128",
-                "MSG_COUNT": "100",
-                "HOST": "a78f8451171e348f3a866b98ae42ad68-413519447.eu-central-1.elb.amazonaws.com",
+                "OP_TYPE": "produce",
+                "MSG_SIZE": "1024",
+                "PRODUCE_RATE": "1000000",
+                "SECONDS_TO_RUN": "5",
+                "HOST": "localhost",
                 "USERNAME": "root",
-                "TOKEN": "FRSNXZ25jPUedrJe3vlz",
+                "TOKEN": "memphis",
                 "STORAGE_TYPE": "file",
                 "REPLICAS": "1",
-                "CG": "cg1",
                 "PULL_INTERVAL": "1",
                 "BATCH_SIZE": "10",
                 "BATCH_TTW": "1",
                 "CONCURRENCY": "10",
-                "ITERATIONS": "5",
                 "PRINT_HEADERS": "true",
-                "ASYNC_PRODUCE": "false",
+                "ASYNC_PRODUCE": "true",
                 "DELETE_STATIONS": "false",
-                "SLEEP_MS": "500"
             }
         }
     ]

@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"math"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,53 +27,45 @@ func getMsgInSize(len int) []byte {
 	return bytes
 }
 
-func validateArgs() (string, int, int, string, string, string, memphis.StorageType, int, string, time.Duration, int, time.Duration, int, int, bool, bool, bool, int, memphis.RetentionType, int) {
-	var opType, msgSizeString, msgsCountString, host, username, token, storageTypeString, replicasString, cg, pullIntervalString, batchSizeString,
-		batchTTWString, concurrencyString, iterationsString,
-		printHeadersString, asyncProduceString, deleteStationsString, sleepMsString, retentionTypeString, retentionValueString string
+func validateArgs() (string, int, int, int, string, string, string, memphis.StorageType, int, time.Duration, int, time.Duration, int, bool, bool, bool) {
+	var opType, msgSizeString, produceRateString, secondsToRunString, host, username, token, storageTypeString, replicasString,
+		pullIntervalString, batchSizeString, batchTTWString, concurrencyString, printHeadersString, asyncProduceString,
+		deleteStationsString string
 
 	if len(os.Args) < 2 {
 		opType = os.Getenv("OP_TYPE")
 		msgSizeString = os.Getenv("MSG_SIZE")
-		msgsCountString = os.Getenv("MSG_COUNT")
+		produceRateString = os.Getenv("PRODUCE_RATE")
+		secondsToRunString = os.Getenv("SECONDS_TO_RUN")
 		host = os.Getenv("HOST")
 		username = os.Getenv("USERNAME")
 		token = os.Getenv("TOKEN")
 		storageTypeString = os.Getenv("STORAGE_TYPE")
 		replicasString = os.Getenv("REPLICAS")
-		cg = os.Getenv("CG")
 		pullIntervalString = os.Getenv("PULL_INTERVAL")
 		batchSizeString = os.Getenv("BATCH_SIZE")
 		batchTTWString = os.Getenv("BATCH_TTW")
 		concurrencyString = os.Getenv("CONCURRENCY")
-		iterationsString = os.Getenv("ITERATIONS")
 		printHeadersString = os.Getenv("PRINT_HEADERS")
 		asyncProduceString = os.Getenv("ASYNC_PRODUCE")
 		deleteStationsString = os.Getenv("DELETE_STATIONS")
-		sleepMsString = os.Getenv("SLEEP_MS")
-		retentionTypeString = os.Getenv("RETENTION_TYPE")
-		retentionValueString = os.Getenv("RETENTION_VALUE")
 	} else {
 		opType = (strings.Split(os.Args[1], "="))[1]
 		msgSizeString = (strings.Split(os.Args[2], "="))[1]
-		msgsCountString = (strings.Split(os.Args[3], "="))[1]
-		host = (strings.Split(os.Args[4], "="))[1]
-		username = (strings.Split(os.Args[5], "="))[1]
-		token = (strings.Split(os.Args[6], "="))[1]
-		storageTypeString = (strings.Split(os.Args[7], "="))[1]
-		replicasString = (strings.Split(os.Args[8], "="))[1]
-		cg = (strings.Split(os.Args[9], "="))[1]
+		produceRateString = (strings.Split(os.Args[3], "="))[1]
+		secondsToRunString = (strings.Split(os.Args[4], "="))[1]
+		host = (strings.Split(os.Args[5], "="))[1]
+		username = (strings.Split(os.Args[6], "="))[1]
+		token = (strings.Split(os.Args[7], "="))[1]
+		storageTypeString = (strings.Split(os.Args[8], "="))[1]
+		replicasString = (strings.Split(os.Args[9], "="))[1]
 		pullIntervalString = (strings.Split(os.Args[10], "="))[1]
 		batchSizeString = (strings.Split(os.Args[11], "="))[1]
 		batchTTWString = (strings.Split(os.Args[12], "="))[1]
 		concurrencyString = (strings.Split(os.Args[13], "="))[1]
-		iterationsString = (strings.Split(os.Args[14], "="))[1]
-		printHeadersString = (strings.Split(os.Args[15], "="))[1]
-		asyncProduceString = (strings.Split(os.Args[16], "="))[1]
-		deleteStationsString = (strings.Split(os.Args[17], "="))[1]
-		sleepMsString = (strings.Split(os.Args[18], "="))[1]
-		retentionTypeString = (strings.Split(os.Args[19], "="))[1]
-		retentionValueString = (strings.Split(os.Args[20], "="))[1]
+		printHeadersString = (strings.Split(os.Args[14], "="))[1]
+		asyncProduceString = (strings.Split(os.Args[15], "="))[1]
+		deleteStationsString = (strings.Split(os.Args[16], "="))[1]
 	}
 
 	if opType != "produce" && opType != "consume" && opType != "e2e" {
@@ -86,9 +79,15 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	msgsCount, err := strconv.Atoi(msgsCountString)
-	if err != nil || msgsCount <= 0 {
-		fmt.Println("msgCount has to be a positive number")
+	produceRate, err := strconv.Atoi(produceRateString)
+	if err != nil || produceRate <= 0 {
+		fmt.Println("produceRate has to be a positive number")
+		os.Exit(1)
+	}
+
+	secondsToRun, err := strconv.Atoi(secondsToRunString)
+	if err != nil || secondsToRun <= 0 {
+		fmt.Println("secondsToRun has to be a positive number")
 		os.Exit(1)
 	}
 
@@ -134,12 +133,6 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		os.Exit(1)
 	}
 
-	iterations, err := strconv.Atoi(iterationsString)
-	if err != nil || iterations <= 0 {
-		fmt.Println("iterations has to be a positive number")
-		os.Exit(1)
-	}
-
 	printHeaders, err := strconv.ParseBool(printHeadersString)
 	if err != nil {
 		printHeaders = false
@@ -155,112 +148,84 @@ func validateArgs() (string, int, int, string, string, string, memphis.StorageTy
 		printHeaders = false
 	}
 
-	sleepMs, err := strconv.Atoi(sleepMsString)
-	if err != nil || sleepMs <= 0 {
-		fmt.Println("sleepMs has to be a positive number")
-		os.Exit(1)
-	}
-
-	retentionType := memphis.MaxMessageAgeSeconds
-	if retentionTypeString == "msgs" {
-		retentionType = memphis.Messages
-	} else if storageTypeString == "bytes" {
-		retentionType = memphis.Bytes
-	}
-
-	retentionValue := 604800
-	retentionValue, err = strconv.Atoi(retentionValueString)
-	if err != nil || retentionValue <= 0 {
-		fmt.Println("retentionValue has to be a positive number")
-		os.Exit(1)
-	}
-
-	return opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrency, iterations, printHeaders, asyncProduce, deleteStations, sleepMs, retentionType, retentionValue
+	return opType, msgSize, produceRate, secondsToRun, host, username, token, storageType, replicas, pullInterval, batchSize, batchTTW, concurrency, printHeaders, asyncProduce, deleteStations
 }
 
 func main() {
-	opType, msgSize, msgsCount, host, username, token, storageType, replicas, cg, pullInterval, batchSize, batchTTW, concurrencyFactor, iterations, printHeaders, asyncProduce, deleteStations, sleepMs, retentionType, retentionValue := validateArgs()
-	msg := getMsgInSize(msgSize)
-	if printHeaders {
-		fmt.Println("operation,iterations,replica,msgSize,msgCount,pullInterval,batchSize,batchTTW,concurency,msgs/sec,MB/sec,time")
+	opType, msgSize, produceRate, secondsToRun, host, username, token, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, printHeaders, asyncProduce, deleteStations := validateArgs()
+
+	timestamp := strconv.Itoa(int(time.Now().Unix()))
+	stationName := "station_" + timestamp
+	c, err := memphis.Connect(host, username, token)
+	if err != nil {
+		fmt.Println("Connect: " + err.Error())
+		os.Exit(1)
+	}
+	s, err := c.CreateStation(stationName,
+		memphis.StorageTypeOpt(storageType),
+		memphis.Replicas(replicas),
+	)
+	if err != nil {
+		fmt.Println("CreateStation: " + err.Error())
+		os.Exit(1)
 	}
 
-	for i := 0; i < iterations; i++ {
-		timestamp := strconv.Itoa(int(time.Now().Unix()))
-		iterationsCount := strconv.Itoa(i)
-		stationName := "station_" + timestamp + "_" + "_" + iterationsCount
-
+	// initialize connection resources
+	var extConn []*ExtConn
+	for j := 0; j < concurrencyFactor; j++ {
+		index1 := strconv.Itoa(j)
 		c, err := memphis.Connect(host, username, token)
 		if err != nil {
 			fmt.Println("Connect: " + err.Error())
 			os.Exit(1)
 		}
-		s, err := c.CreateStation(stationName,
-			memphis.StorageTypeOpt(storageType),
-			memphis.Replicas(replicas),
-			memphis.RetentionTypeOpt(retentionType),
-			memphis.RetentionVal(retentionValue),
-		)
+		p, err := c.CreateProducer(stationName, "prod_"+index1)
 		if err != nil {
-			fmt.Println("CreateStation: " + err.Error())
+			fmt.Println("CreateProducer: " + err.Error())
 			os.Exit(1)
 		}
-
-		var extConn []*ExtConn
-		for i := 0; i < concurrencyFactor; i++ {
-			indexConcurrency := strconv.Itoa(i)
-			c, err := memphis.Connect(host, username, token)
+		ec := ExtConn{c: c, p: p}
+		if opType == "e2e" || opType == "consume" {
+			cons, err := c.CreateConsumer(stationName, "cons_"+index1,
+				memphis.ConsumerGroup("group1"),
+				memphis.PullInterval(pullInterval),
+				memphis.BatchSize(batchSize),
+				memphis.BatchMaxWaitTime(batchTTW),
+				memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+					return
+				}),
+			)
 			if err != nil {
-				fmt.Println("Connect: " + err.Error())
+				fmt.Println("CreateConsumer: " + err.Error())
 				os.Exit(1)
 			}
 
-			p, err := c.CreateProducer(stationName, "prod_"+indexConcurrency)
-			if err != nil {
-				fmt.Println("CreateProducer: " + err.Error())
-				os.Exit(1)
-			}
-
-			ec := ExtConn{c: c, p: p}
-			if opType == "e2e" || opType == "consume" {
-				cons, err := c.CreateConsumer(stationName, "cons_"+indexConcurrency,
-					memphis.ConsumerGroup(cg),
-					memphis.PullInterval(pullInterval),
-					memphis.BatchSize(batchSize),
-					memphis.BatchMaxWaitTime(batchTTW),
-					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-						return
-					}),
-				)
-				if err != nil {
-					fmt.Println("CreateConsumer: " + err.Error())
-					os.Exit(1)
-				}
-
-				ec.cons = cons
-			}
-
-			extConn = append(extConn, &ec)
+			ec.cons = cons
 		}
 
-		// produce
-		var wg sync.WaitGroup
-		wg.Add(concurrencyFactor)
-		if opType == "e2e" {
-			wg.Add(concurrencyFactor)
-		}
+		extConn = append(extConn, &ec)
+	}
 
+	msg := getMsgInSize(msgSize)
+	if printHeaders {
+		fmt.Println("operation,msgSize,produceRate,storageType,replicas,pullInterval,batchSize,batchTTW,concurency,msgsCount,latency")
+	}
+
+	for i := 0; i < secondsToRun; i++ {
+		finish := make(chan bool)
+
+		// produce/e2e
 		for i := 0; i < concurrencyFactor; i++ {
 			var count int
 			if concurrencyFactor-1 == 0 { // run with single producer
-				count = msgsCount
+				count = produceRate
 			} else if i == concurrencyFactor-1 {
-				count = (msgsCount / concurrencyFactor) + (msgsCount % concurrencyFactor)
+				count = (produceRate / concurrencyFactor) + (produceRate % concurrencyFactor)
 			} else {
-				count = msgsCount / concurrencyFactor
+				count = produceRate / concurrencyFactor
 			}
 
-			go func(ec *ExtConn, msg []byte, count int, wg *sync.WaitGroup) {
+			go func(ec *ExtConn, msg []byte, count int, ch chan bool) {
 				for i := 0; i < count; i++ {
 					if asyncProduce {
 						ec.p.Produce(msg, memphis.AsyncProduce())
@@ -268,11 +233,11 @@ func main() {
 						ec.p.Produce(msg)
 					}
 				}
-				wg.Done()
-			}(extConn[i], msg, count, &wg)
+				ch <- true
+			}(extConn[i], msg, count, finish)
 
 			if opType == "e2e" {
-				go func(ec *ExtConn, wg *sync.WaitGroup) {
+				go func(ec *ExtConn, ch chan bool) {
 					var wg2 sync.WaitGroup
 					wg2.Add(1)
 					done := false
@@ -287,24 +252,19 @@ func main() {
 						}
 					})
 					wg2.Wait()
-					wg.Done()
-				}(extConn[i], &wg)
+					ch <- true
+				}(extConn[i], finish)
 			}
 		}
-
 		var start time.Time
 		if opType == "produce" || opType == "e2e" {
 			start = time.Now()
 		}
-		wg.Wait()
 
 		// consume
 		if opType == "consume" {
-			var wg1 sync.WaitGroup
-			wg1.Add(concurrencyFactor)
-
 			for i := 0; i < concurrencyFactor; i++ {
-				go func(ec *ExtConn, wg1 *sync.WaitGroup) {
+				go func(ec *ExtConn, ch chan bool) {
 					var wg2 sync.WaitGroup
 					wg2.Add(1)
 					done := false
@@ -319,30 +279,62 @@ func main() {
 						}
 					})
 					wg2.Wait()
-					wg1.Done()
-				}(extConn[i], &wg1)
+					ch <- true
+				}(extConn[i], finish)
 			}
 
 			start = time.Now()
-			wg1.Wait()
 		}
 
-		elapsed := time.Since(start).Seconds()
-		msgsPerSec := float64(msgsCount) / float64(elapsed)
-		mbPerSec := float64(msgSize*msgsCount) / float64(elapsed) / 1024 / 1024
+		var latency, msgsCount int64
+		count := 0
+		done := false
+		for {
+			if done {
+				break
+			} else {
+				select {
+				case <-finish:
+					count++
+					if (opType == "produce" && count == concurrencyFactor) || (opType == "e2e" && count == 2*concurrencyFactor) || (opType == "consume" && count == 2*concurrencyFactor) {
+						latency = time.Since(start).Milliseconds()
+					}
 
-		for i := 0; i < concurrencyFactor; i++ {
-			// extConn[i].p.Destroy()
-			if opType == "consume" || opType == "e2e" {
-				extConn[i].cons.Destroy()
+				case <-time.After(time.Second * 1):
+					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, token)
+					cmd := exec.Command("bash", "-c", command)
+					var outb bytes.Buffer
+					cmd.Stdout = &outb
+					err = cmd.Run()
+					if err != nil {
+						fmt.Println("info station: " + err.Error())
+						os.Exit(1)
+					}
+					cmdOut := outb.String()
+					cmdOut = strings.Split(cmdOut, "  Messages: ")[1]
+					cmdOut = strings.Split(cmdOut, "\n")[0]
+					cmdOut = strings.Replace(cmdOut, ",", "", -1)
+					num, _ := strconv.Atoi(cmdOut)
+					msgsCount = int64(num)
+
+					if latency == 0 {
+						latency = 1000
+					}
+					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
+					cmd = exec.Command("bash", "-c", command)
+					err = cmd.Run()
+					if err != nil {
+						fmt.Println("purge station: " + err.Error())
+						os.Exit(1)
+					}
+					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
+					done = true
+				}
 			}
-			extConn[i].c.Close()
 		}
-		if deleteStations {
-			go s.Destroy()
-		}
+	}
 
-		fmt.Printf("%s,%v,%v,%v,%v,%v,%v,%v,%v,%f,%f,%f\n", opType, iterations, replicas, msgSize, msgsCount, pullInterval, batchSize, batchTTW, concurrencyFactor, math.Ceil(msgsPerSec), mbPerSec, float64(elapsed))
-		time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+	if deleteStations {
+		go s.Destroy()
 	}
 }
