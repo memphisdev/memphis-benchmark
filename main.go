@@ -317,6 +317,8 @@ func main() {
 						}
 					}
 					cmdOut := outb.String()
+					fmt.Println(cmdOut)
+					fmt.Println(strings.Split(cmdOut, "  Messages: "))
 					cmdOut = strings.Split(cmdOut, "  Messages: ")[1]
 					cmdOut = strings.Split(cmdOut, "\n")[0]
 					cmdOut = strings.Replace(cmdOut, ",", "", -1)
