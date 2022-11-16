@@ -307,8 +307,14 @@ func main() {
 					cmd.Stdout = &outb
 					err = cmd.Run()
 					if err != nil {
-						fmt.Println("info station: " + err.Error())
-						os.Exit(1)
+						cmd := exec.Command("sh", "-c", command)
+						var outb bytes.Buffer
+						cmd.Stdout = &outb
+						err = cmd.Run()
+						if err != nil {
+							fmt.Println("info station: " + err.Error())
+							os.Exit(1)
+						}
 					}
 					cmdOut := outb.String()
 					cmdOut = strings.Split(cmdOut, "  Messages: ")[1]
@@ -322,16 +328,18 @@ func main() {
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
 
-					// time.Sleep(10 * time.Second)
-					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
-					cmd = exec.Command("bash", "-c", command)
-					err = cmd.Run()
-					if err != nil {
-						cmd = exec.Command("sh", "-c", command)
+					if opType == "consume" || opType == "e2e" {
+						time.Sleep(10 * time.Second)
+						command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
+						cmd = exec.Command("bash", "-c", command)
 						err = cmd.Run()
 						if err != nil {
-							fmt.Println("purge station: " + err.Error())
-							os.Exit(1)
+							cmd = exec.Command("sh", "-c", command)
+							err = cmd.Run()
+							if err != nil {
+								fmt.Println("purge station: " + err.Error())
+								os.Exit(1)
+							}
 						}
 					}
 
