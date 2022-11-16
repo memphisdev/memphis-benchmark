@@ -320,14 +320,21 @@ func main() {
 					if latency == 0 {
 						latency = 1000
 					}
+					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
+
+					// time.Sleep(10 * time.Second)
 					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
 					cmd = exec.Command("bash", "-c", command)
 					err = cmd.Run()
 					if err != nil {
-						fmt.Println("purge station: " + err.Error())
-						os.Exit(1)
+						cmd = exec.Command("sh", "-c", command)
+						err = cmd.Run()
+						if err != nil {
+							fmt.Println("purge station: " + err.Error())
+							os.Exit(1)
+						}
 					}
-					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
+
 					done = true
 				}
 			}
