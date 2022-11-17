@@ -297,7 +297,7 @@ func main() {
 				case <-finish:
 					count++
 					if (opType == "produce" && count == concurrencyFactor) || (opType == "e2e" && count == 2*concurrencyFactor) || (opType == "consume" && count == 2*concurrencyFactor) {
-						latency = time.Since(start).Milliseconds()
+						latency = time.Since(start).Microseconds()
 					}
 
 				case <-time.After(time.Second * 1):
