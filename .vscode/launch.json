@@ -11,7 +11,7 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {
-                "OP_TYPE": "produce",
+                "OP_TYPE": "e2e",
                 "MSG_SIZE": "1024",
                 "PRODUCE_RATE": "1000000",
                 "SECONDS_TO_RUN": "5",

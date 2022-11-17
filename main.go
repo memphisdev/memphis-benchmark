@@ -301,6 +301,9 @@ func main() {
 					}
 
 				case <-time.After(time.Second * 1):
+					// stop consuming
+
+					// count based on messages in the stream after 1 sec
 					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, token)
 					cmd := exec.Command("bash", "-c", command)
 					var outb bytes.Buffer
@@ -321,24 +324,46 @@ func main() {
 					cmdOut = strings.Replace(cmdOut, ",", "", -1)
 					num, _ := strconv.Atoi(cmdOut)
 					msgsCount = int64(num)
+					if opType == "consume" || opType == "e2e" { // consume/e2e // count based on the consumed messages
+						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s", stationName, host, token)
+						cmd := exec.Command("bash", "-c", command)
+						var outb bytes.Buffer
+						cmd.Stdout = &outb
+						err = cmd.Run()
+						if err != nil {
+							cmd := exec.Command("sh", "-c", command)
+							var outb bytes.Buffer
+							cmd.Stdout = &outb
+							err = cmd.Run()
+							if err != nil {
+								fmt.Println("info consumer: " + err.Error())
+								os.Exit(1)
+							}
+						}
+						cmdOut := outb.String()
+						cmdOut = strings.Split(cmdOut, "Unprocessed Messages: ")[1]
+						cmdOut = strings.Split(cmdOut, "\n")[0]
+						cmdOut = strings.Replace(cmdOut, ",", "", -1)
+						num, _ := strconv.Atoi(cmdOut)
+						unprocessed := int64(num)
+						msgsCount = msgsCount - unprocessed
+					}
 
-					if latency == 0 {
+					if latency == 0 { // in case not all messages has been sent during 1 sec
 						latency = 1000
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
 
-					if opType == "consume" || opType == "e2e" {
-						time.Sleep(10 * time.Second)
-						command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
-						cmd = exec.Command("bash", "-c", command)
+					time.Sleep(10 * time.Second) // wait all messages will be deleted before moving to the next iteration
+					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
+					cmd = exec.Command("bash", "-c", command)
+					err := cmd.Run()
+					if err != nil {
+						cmd = exec.Command("sh", "-c", command)
 						err = cmd.Run()
 						if err != nil {
-							cmd = exec.Command("sh", "-c", command)
-							err = cmd.Run()
-							if err != nil {
-								fmt.Println("purge station: " + err.Error())
-								os.Exit(1)
-							}
+							fmt.Println("purge station: " + err.Error())
+							os.Exit(1)
 						}
 					}
 
