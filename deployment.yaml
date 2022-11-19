@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: memphis-benchmark
+  name: memphis-stresstest
   namespace: memphis-benchmark
   labels:
-    app: memphis-benchmark
+    app: memphis-stresstest
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: memphis-benchmark
+      app: memphis-stresstest
   template:
     metadata:
       labels:
-        app: memphis-benchmark
+        app: memphis-stresstest
     spec:
       containers:
-      - name: memphis-benchmark
-        image: memphisos/memphis-benchmark:latest
+      - name: memphis-stresstest
+        image: memphisos/memphis-benchmark:stresstest
         imagePullPolicy: Always 
         command: [ "/bin/sh", "-c", "--" ]
         args: [ "while true; do sleep 30; done;" ]
