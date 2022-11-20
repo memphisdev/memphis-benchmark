@@ -11,9 +11,9 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {
-                "OP_TYPE": "e2e",
+                "OP_TYPE": "consume",
                 "MSG_SIZE": "1024",
-                "PRODUCE_RATE": "5000",
+                "PRODUCE_RATE": "5",
                 "SECONDS_TO_RUN": "5",
                 "HOST": "localhost",
                 "USERNAME": "root",

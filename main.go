@@ -68,8 +68,8 @@ func validateArgs() (string, int, int, int, string, string, string, memphis.Stor
 		deleteStationsString = (strings.Split(os.Args[16], "="))[1]
 	}
 
-	if opType != "produce" && opType != "e2e" {
-		fmt.Println("opType has to be 1 of the following produce/e2e")
+	if opType != "produce" && opType != "e2e" && opType != "consume" {
+		fmt.Println("opType has to be 1 of the following produce/e2e/consume")
 		os.Exit(1)
 	}
 
@@ -194,23 +194,23 @@ func main() {
 			os.Exit(1)
 		}
 		ec := ExtConn{c: c, p: p}
-		if opType == "e2e" {
-			cons, err := c.CreateConsumer(stationName, "cons_"+index1,
-				memphis.ConsumerGroup("group1"),
-				memphis.PullInterval(pullInterval),
-				memphis.BatchSize(batchSize),
-				memphis.BatchMaxWaitTime(batchTTW),
-				memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-					return
-				}),
-			)
-			if err != nil {
-				fmt.Println("CreateConsumer: " + err.Error())
-				os.Exit(1)
-			}
+		// if opType == "e2e" {
+		// 	cons, err := c.CreateConsumer(stationName, "cons_"+index1,
+		// 		memphis.ConsumerGroup("group1"),
+		// 		memphis.PullInterval(pullInterval),
+		// 		memphis.BatchSize(batchSize),
+		// 		memphis.BatchMaxWaitTime(batchTTW),
+		// 		memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+		// 			return
+		// 		}),
+		// 	)
+		// 	if err != nil {
+		// 		fmt.Println("CreateConsumer: " + err.Error())
+		// 		os.Exit(1)
+		// 	}
 
-			ec.cons = cons
-		}
+		// 	ec.cons = cons
+		// }
 
 		extConn = append(extConn, &ec)
 	}
@@ -223,30 +223,89 @@ func main() {
 	for i := 0; i < secondsToRun; i++ {
 		finish := make(chan bool)
 		var start time.Time
-		var waitGroup, waitGroupConsumers sync.WaitGroup
-		waitGroup.Add(concurrencyFactor)
-		waitGroupConsumers.Add(concurrencyFactor)
+		waitGroup := new(sync.WaitGroup)
+		waitGroupConsumers := new(sync.WaitGroup)
+
+		if opType == "produce" {
+			waitGroup.Add(concurrencyFactor)
+		} else if opType == "e2e" || opType == "consume"{
+			waitGroup.Add(produceRate)
+		}
+
+		if opType == "e2e" {
+			waitGroupConsumers.Add(concurrencyFactor)
+		} else if opType == "consume" {
+			waitGroupConsumers.Add(1)
+		}
 
 		if opType == "e2e" {
 			for z := 0; z < concurrencyFactor; z++ {
-				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup) {
-					done := false
-					sawFirstBatch := false
+				index := strconv.Itoa(z)
+				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup, index string) {
+					cons, err := ec.c.CreateConsumer(stationName, "cons_"+index,
+						memphis.ConsumerGroup("group1"),
+						memphis.PullInterval(pullInterval),
+						memphis.BatchSize(batchSize),
+						memphis.BatchMaxWaitTime(batchTTW),
+						memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+							return
+						}),
+					)
+					if err != nil {
+						fmt.Println("CreateConsumer: " + err.Error())
+						os.Exit(1)
+					}
+					ec.cons = cons
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
-						if err != nil && sawFirstBatch && !done {
-							done = true
-							wg.Done()
-						} else {
-							sawFirstBatch = true
+						// defer func() {
+						// 	if err := recover(); err != nil {
+						// 		// pass
+						// 	}
+						// }()
+						if err == nil {
+							for range msgs {
+								wg.Done()
+							}
 						}
 					})
 					wgc.Done()
-				}(extConn[z], &waitGroup, &waitGroupConsumers)
+				}(extConn[z], waitGroup, waitGroupConsumers, index)
 			}
 			waitGroupConsumers.Wait()
 		}
 
-		start = time.Now()
+		if opType == "consume" {
+			go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup) {
+				cons, err := ec.c.CreateConsumer(stationName, "cons",
+					memphis.ConsumerGroup("group1"),
+					memphis.PullInterval(pullInterval),
+					memphis.BatchSize(batchSize),
+					memphis.BatchMaxWaitTime(batchTTW),
+					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+						return
+					}),
+				)
+				if err != nil {
+					fmt.Println("CreateConsumer: " + err.Error())
+					os.Exit(1)
+				}
+				ec.cons = cons
+				ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
+					if err == nil {
+						for range msgs {
+							wg.Done()
+						}
+					}
+				})
+				wgc.Done()
+			}(extConn[0], waitGroup, waitGroupConsumers)
+
+			waitGroupConsumers.Wait()
+		}
+
+		if opType == "produce" || opType == "e2e" {
+			start = time.Now()
+		}
 
 		for t := 0; t < concurrencyFactor; t++ {
 			var count int
@@ -270,13 +329,16 @@ func main() {
 				if opType == "produce" {
 					wg.Done()
 				}
-			}(extConn[i], copyBytes(msg), count, &waitGroup)
+			}(extConn[t], copyBytes(msg), count, waitGroup)
 		}
 
+		if opType == "consume" {
+			start = time.Now()
+		}
 		go func(wg *sync.WaitGroup, ch *chan bool) {
 			wg.Wait()
 			*ch <- true
-		}(&waitGroup, &finish)
+		}(waitGroup, &finish)
 
 		var latency, msgsCount int64
 		done := false
@@ -289,14 +351,6 @@ func main() {
 					latency = time.Since(start).Microseconds()
 
 				case <-time.After(time.Second * 1):
-					if opType == "e2e" {
-						go func() {
-							for i := 0; i < len(extConn); i++ {
-								extConn[i].cons.StopConsume()
-							}
-						}()
-					}
-
 					// count based on messages in the stream after 1 sec
 					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, token)
 					cmd := exec.Command("bash", "-c", command)
@@ -318,7 +372,7 @@ func main() {
 					cmdOut = strings.Replace(cmdOut, ",", "", -1)
 					num, _ := strconv.Atoi(cmdOut)
 					msgsCount = int64(num)
-					if opType == "e2e" { // e2e - count based on the consumed messages
+					if opType == "e2e" || opType == "consume" { // e2e - count based on the consumed messages
 						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s", stationName, host, token)
 						cmd := exec.Command("bash", "-c", command)
 						var outb bytes.Buffer
@@ -341,10 +395,17 @@ func main() {
 						num, _ := strconv.Atoi(cmdOut)
 						unprocessed := int64(num)
 						msgsCount = msgsCount - unprocessed
+						if opType == "e2e" {
+							for i := 0; i < len(extConn); i++ {
+								extConn[i].cons.Destroy()
+							}
+						} else if opType == "consume" {
+							extConn[0].cons.Destroy()
+						}
 					}
 
 					if latency == 0 { // in case not all messages has been sent during 1 sec
-						latency = 1000
+						latency = 1000000
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
 
