@@ -380,7 +380,6 @@ func main() {
 						err = cmd.Run()
 						if err != nil {
 							cmd := exec.Command("sh", "-c", command)
-							var outb bytes.Buffer
 							cmd.Stdout = &outb
 							err = cmd.Run()
 							if err != nil {
