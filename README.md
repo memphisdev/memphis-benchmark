@@ -1,4 +1,4 @@
-go run main.go opType=produce/consume/e2e msgSize=1050 produceRate=1000000 secondsToRun=5 host=localhost username=root token=memphis storageType=file/memory replicas=1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 printHeaders=true asyncProduce=false deleteStations=false
+go run main.go opType=produce/e2e msgSize=1050 produceRate=1000000 secondsToRun=5 host=localhost username=root token=memphis storageType=file/memory replicas=1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 printHeaders=true asyncProduce=false deleteStations=false
 
 or go run main.go with the following environment variables
 OP_TYPE

@@ -13,7 +13,7 @@
             "env": {
                 "OP_TYPE": "e2e",
                 "MSG_SIZE": "1024",
-                "PRODUCE_RATE": "1000000",
+                "PRODUCE_RATE": "5000",
                 "SECONDS_TO_RUN": "5",
                 "HOST": "localhost",
                 "USERNAME": "root",
