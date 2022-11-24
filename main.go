@@ -240,9 +240,12 @@ func main() {
 				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup, index string, s int) {
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
 						if err == nil {
-							for _, msg := range msgs {
-								msg.Ack()
+							for range msgs {
 								wg.Done()
+							}
+
+							for _, msg := range msgs { // diferent loops in order to release the waiting group ASAP
+								msg.Ack()
 							}
 						}
 					})
