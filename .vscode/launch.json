@@ -13,8 +13,8 @@
             "env": {
                 "OP_TYPE": "consume",
                 "MSG_SIZE": "1024",
-                "PRODUCE_RATE": "5",
-                "SECONDS_TO_RUN": "5",
+                "PRODUCE_RATE": "300",
+                "SECONDS_TO_RUN": "50",
                 "HOST": "localhost",
                 "USERNAME": "root",
                 "TOKEN": "memphis",

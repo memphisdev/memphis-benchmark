@@ -91,9 +91,9 @@ func validateArgs() (string, int, int, int, string, string, string, memphis.Stor
 		os.Exit(1)
 	}
 
-	storageType := memphis.File
+	storageType := memphis.Disk
 	if storageTypeString == "file" {
-		storageType = memphis.File
+		storageType = memphis.Disk
 	} else if storageTypeString == "memory" {
 		storageType = memphis.Memory
 	} else {
@@ -194,23 +194,23 @@ func main() {
 			os.Exit(1)
 		}
 		ec := ExtConn{c: c, p: p}
-		// if opType == "e2e" {
-		// 	cons, err := c.CreateConsumer(stationName, "cons_"+index1,
-		// 		memphis.ConsumerGroup("group1"),
-		// 		memphis.PullInterval(pullInterval),
-		// 		memphis.BatchSize(batchSize),
-		// 		memphis.BatchMaxWaitTime(batchTTW),
-		// 		memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-		// 			return
-		// 		}),
-		// 	)
-		// 	if err != nil {
-		// 		fmt.Println("CreateConsumer: " + err.Error())
-		// 		os.Exit(1)
-		// 	}
+		if opType == "consume" || opType == "e2e" {
+			cons, err := c.CreateConsumer(stationName, "cons_"+index1,
+				memphis.ConsumerGroup("group1"),
+				memphis.PullInterval(pullInterval),
+				memphis.BatchSize(batchSize),
+				memphis.BatchMaxWaitTime(batchTTW),
+				memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
+					return
+				}),
+			)
+			if err != nil {
+				fmt.Println("CreateConsumer: " + err.Error())
+				os.Exit(1)
+			}
 
-		// 	ec.cons = cons
-		// }
+			ec.cons = cons
+		}
 
 		extConn = append(extConn, &ec)
 	}
@@ -228,78 +228,27 @@ func main() {
 
 		if opType == "produce" {
 			waitGroup.Add(concurrencyFactor)
-		} else if opType == "e2e" || opType == "consume"{
+		} else if opType == "e2e" || opType == "consume" {
 			waitGroup.Add(produceRate)
 		}
 
-		if opType == "e2e" {
+		// start consume
+		if opType == "consume" || opType == "e2e" {
 			waitGroupConsumers.Add(concurrencyFactor)
-		} else if opType == "consume" {
-			waitGroupConsumers.Add(1)
-		}
-
-		if opType == "e2e" {
 			for z := 0; z < concurrencyFactor; z++ {
 				index := strconv.Itoa(z)
-				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup, index string) {
-					cons, err := ec.c.CreateConsumer(stationName, "cons_"+index,
-						memphis.ConsumerGroup("group1"),
-						memphis.PullInterval(pullInterval),
-						memphis.BatchSize(batchSize),
-						memphis.BatchMaxWaitTime(batchTTW),
-						memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-							return
-						}),
-					)
-					if err != nil {
-						fmt.Println("CreateConsumer: " + err.Error())
-						os.Exit(1)
-					}
-					ec.cons = cons
+				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup, index string, s int) {
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
-						// defer func() {
-						// 	if err := recover(); err != nil {
-						// 		// pass
-						// 	}
-						// }()
 						if err == nil {
-							for range msgs {
+							for _, msg := range msgs {
+								msg.Ack()
 								wg.Done()
 							}
 						}
 					})
 					wgc.Done()
-				}(extConn[z], waitGroup, waitGroupConsumers, index)
+				}(extConn[z], waitGroup, waitGroupConsumers, index, i)
 			}
-			waitGroupConsumers.Wait()
-		}
-
-		if opType == "consume" {
-			go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup) {
-				cons, err := ec.c.CreateConsumer(stationName, "cons",
-					memphis.ConsumerGroup("group1"),
-					memphis.PullInterval(pullInterval),
-					memphis.BatchSize(batchSize),
-					memphis.BatchMaxWaitTime(batchTTW),
-					memphis.ConsumerErrorHandler(func(_ *memphis.Consumer, err error) {
-						return
-					}),
-				)
-				if err != nil {
-					fmt.Println("CreateConsumer: " + err.Error())
-					os.Exit(1)
-				}
-				ec.cons = cons
-				ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
-					if err == nil {
-						for range msgs {
-							wg.Done()
-						}
-					}
-				})
-				wgc.Done()
-			}(extConn[0], waitGroup, waitGroupConsumers)
-
 			waitGroupConsumers.Wait()
 		}
 
@@ -307,6 +256,7 @@ func main() {
 			start = time.Now()
 		}
 
+		// start produce
 		for t := 0; t < concurrencyFactor; t++ {
 			var count int
 			if concurrencyFactor-1 == 0 { // run with single producer
@@ -335,6 +285,7 @@ func main() {
 		if opType == "consume" {
 			start = time.Now()
 		}
+
 		go func(wg *sync.WaitGroup, ch *chan bool) {
 			wg.Wait()
 			*ch <- true
@@ -394,21 +345,23 @@ func main() {
 						num, _ := strconv.Atoi(cmdOut)
 						unprocessed := int64(num)
 						msgsCount = msgsCount - unprocessed
-						if opType == "e2e" {
-							for i := 0; i < len(extConn); i++ {
-								extConn[i].cons.Destroy()
-							}
-						} else if opType == "consume" {
-							extConn[0].cons.Destroy()
-						}
+
+						// for i := 0; i < len(extConn); i++ {
+						// 	extConn[i].cons.StopConsume()
+						// }
 					}
 
 					if latency == 0 { // in case not all messages has been sent during 1 sec
 						latency = 1000000
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
-
-					time.Sleep(10 * time.Second) // wait all messages will be deleted before moving to the next iteration
+					if opType == "consume" || opType == "e2e" {
+						for i := 0; i < len(extConn); i++ {
+							// start = time.Now()
+							extConn[i].cons.StopConsume()
+							// fmt.Println(time.Since(start).Milliseconds())
+						}
+					}
 					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
 					cmd = exec.Command("bash", "-c", command)
 					err := cmd.Run()
@@ -421,6 +374,7 @@ func main() {
 						}
 					}
 
+					time.Sleep(10 * time.Second) // wait all messages will be deleted before moving to the next iteration
 					done = true
 				}
 			}
