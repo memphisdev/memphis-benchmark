@@ -346,22 +346,16 @@ func main() {
 						unprocessed := int64(num)
 						msgsCount = msgsCount - unprocessed
 
-						// for i := 0; i < len(extConn); i++ {
-						// 	extConn[i].cons.StopConsume()
-						// }
+						for i := 0; i < len(extConn); i++ {
+							extConn[i].cons.StopConsume()
+						}
 					}
 
 					if latency == 0 { // in case not all messages has been sent during 1 sec
 						latency = 1000000
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
-					if opType == "consume" || opType == "e2e" {
-						for i := 0; i < len(extConn); i++ {
-							// start = time.Now()
-							extConn[i].cons.StopConsume()
-							// fmt.Println(time.Since(start).Milliseconds())
-						}
-					}
+				
 					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
 					cmd = exec.Command("bash", "-c", command)
 					err := cmd.Run()
