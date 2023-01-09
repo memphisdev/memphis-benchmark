@@ -306,7 +306,8 @@ func main() {
 
 				case <-time.After(time.Second * 1):
 					// count based on messages in the stream after 1 sec
-					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, token)
+					natsToken := fmt.Sprintf("%s::%s", username, token)
+					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, natsToken)
 					cmd := exec.Command("bash", "-c", command)
 					var outb bytes.Buffer
 					cmd.Stdout = &outb
@@ -327,7 +328,7 @@ func main() {
 					num, _ := strconv.Atoi(cmdOut)
 					msgsCount = int64(num)
 					if opType == "e2e" || opType == "consume" { // e2e - count based on the consumed messages
-						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s", stationName, host, token)
+						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s", stationName, host, natsToken)
 						cmd := exec.Command("bash", "-c", command)
 						var outb bytes.Buffer
 						cmd.Stdout = &outb
@@ -359,7 +360,7 @@ func main() {
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
 				
-					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, token)
+					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, natsToken)
 					cmd = exec.Command("bash", "-c", command)
 					err := cmd.Run()
 					if err != nil {
