@@ -234,6 +234,8 @@ func main() {
 
 		// start consume
 		if opType == "consume" || opType == "e2e" {
+			var lock sync.Mutex
+			msgsCounter := 0
 			waitGroupConsumers.Add(concurrencyFactor)
 			for z := 0; z < concurrencyFactor; z++ {
 				index := strconv.Itoa(z)
@@ -241,9 +243,12 @@ func main() {
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
 						if err == nil {
 							for range msgs {
-								if wg != nil {
+								if msgsCounter < produceRate {
 									wg.Done()
 								}
+								lock.Lock()
+								msgsCounter++
+								lock.Unlock()
 							}
 
 							for _, msg := range msgs { // diferent loops in order to release the waiting group ASAP
@@ -293,7 +298,6 @@ func main() {
 
 		go func(wg *sync.WaitGroup, ch *chan bool, ec []*ExtConn) {
 			wg.Wait()
-			wg = nil
 			*ch <- true
 			for i := 0; i < len(ec); i++ {
 				ec[i].cons.StopConsume()
