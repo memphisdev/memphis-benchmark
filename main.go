@@ -241,7 +241,9 @@ func main() {
 					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
 						if err == nil {
 							for range msgs {
-								wg.Done()
+								if wg != nil {
+									wg.Done()
+								}
 							}
 
 							for _, msg := range msgs { // diferent loops in order to release the waiting group ASAP
@@ -289,10 +291,14 @@ func main() {
 			start = time.Now()
 		}
 
-		go func(wg *sync.WaitGroup, ch *chan bool) {
+		go func(wg *sync.WaitGroup, ch *chan bool, ec []*ExtConn) {
 			wg.Wait()
+			wg = nil
 			*ch <- true
-		}(waitGroup, &finish)
+			for i := 0; i < len(ec); i++ {
+				ec[i].cons.StopConsume()
+			}
+		}(waitGroup, &finish, extConn)
 
 		var latency, msgsCount int64
 		done := false
@@ -349,17 +355,13 @@ func main() {
 						num, _ := strconv.Atoi(cmdOut)
 						unprocessed := int64(num)
 						msgsCount = msgsCount - unprocessed
-
-						for i := 0; i < len(extConn); i++ {
-							extConn[i].cons.StopConsume()
-						}
 					}
 
 					if latency == 0 { // in case not all messages has been sent during 1 sec
 						latency = 1000000
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
-				
+
 					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, natsToken)
 					cmd = exec.Command("bash", "-c", command)
 					err := cmd.Run()
