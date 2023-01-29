@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -238,7 +239,7 @@ func main() {
 			for z := 0; z < concurrencyFactor; z++ {
 				index := strconv.Itoa(z)
 				go func(ec *ExtConn, wg *sync.WaitGroup, wgc *sync.WaitGroup, index string, s int) {
-					ec.cons.Consume(func(msgs []*memphis.Msg, err error) {
+					ec.cons.Consume(func(msgs []*memphis.Msg, err error, ctx context.Context) {
 						defer func() {
 							if err := recover(); err != nil {
 								return
