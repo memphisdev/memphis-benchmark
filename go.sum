@@ -11,8 +11,8 @@ github.com/graph-gophers/graphql-go v1.4.0 h1:JE9wveRTSXwJyjdRd6bOQ7Ob5bewTUQ58J
 github.com/graph-gophers/graphql-go v1.4.0/go.mod h1:YtmJZDLbF1YYNrlNAuiO5zAStUWc3XZT07iGsVqe1Os=
 github.com/klauspost/compress v1.15.14 h1:i7WCKDToww0wA+9qrUZ1xOjp218vfFo3nTU6UHp+gOc=
 github.com/klauspost/compress v1.15.14/go.mod h1:QPwzmACJjUTFsnSHH934V6woptycfrDDJnH7hvFVbGM=
-github.com/memphisdev/memphis.go v0.2.0 h1:5mV7m2EsOX/zo6uDTxmrFLd8auhiIUImcesHOrbO6Ig=
-github.com/memphisdev/memphis.go v0.2.0/go.mod h1:EdyV10nMnfFAt7x745y4LUtKuxpJcaOOOUlfQY5++RY=
+github.com/memphisdev/memphis.go v0.2.1 h1:FHY/ZVPXg2qAf2NP07yXz8RWGARzLrwKR3SwQsl2g+Q=
+github.com/memphisdev/memphis.go v0.2.1/go.mod h1:EdyV10nMnfFAt7x745y4LUtKuxpJcaOOOUlfQY5++RY=
 github.com/minio/highwayhash v1.0.2 h1:Aak5U0nElisjDCfPSG79Tgzkn2gl66NxOMspRrKnA/g=
 github.com/minio/highwayhash v1.0.2/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
 github.com/nats-io/jwt/v2 v2.3.0 h1:z2mA1a7tIf5ShggOFlR1oBPgd6hGqcDYsISxZByUzdI=
