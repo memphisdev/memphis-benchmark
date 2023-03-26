@@ -1,10 +1,14 @@
-FROM golang:1.18-alpine3.15 as build
+FROM --platform=$BUILDPLATFORM golang:1.19-alpine3.17 as build
+
 WORKDIR $GOPATH/src/
 COPY . .
-RUN CGO_ENABLED=0 go build  -ldflags="-s -w" -a -o .
+
+ARG TARGETOS TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-w" -a -o  .
+
 RUN go install github.com/nats-io/natscli/nats@latest
 
-FROM alpine:3.15
+FROM alpine:3.17
 ENV GOPATH="/go/src"
 WORKDIR /run
 
