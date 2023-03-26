@@ -29,7 +29,7 @@ node {
 
     stage('Deploy new K8s cluster'){
       dir ('memphis-terraform'){
-        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
+        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: gitBranch
       }
       sh 'make -C memphis-terraform/AWS/EKS/ infra'
       sh(script: """cd memphis-terraform/AWS/EKS/ && aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
@@ -43,7 +43,7 @@ node {
         kubectl patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"regcred\"}]}' -n memphis
       """
       dir ('memphis-k8s'){
-	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: gitBranch
+	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'master'
 	sh(script: """helm install my-memphis memphis --set analytics='false',global.cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
       }
     }
