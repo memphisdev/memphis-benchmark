@@ -36,6 +36,12 @@ node {
     }
 	  
     stage('Deploy memphis cluster'){
+      sh """  
+	kubectl create namespace memphis --dry-run=client -o yaml | kubectl apply -f -
+        aws s3 cp s3://memphis-jenkins-backup-bucket/regcred.yaml .
+        kubectl apply -f regcred.yaml -n memphis
+        kubectl patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"regcred\"}]}' -n memphis
+      """
       dir ('memphis-k8s'){
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: gitBranch
 	sh(script: """helm install my-memphis memphis --set analytics='false',global.cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
