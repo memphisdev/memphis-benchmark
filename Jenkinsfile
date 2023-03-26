@@ -36,16 +36,22 @@ node {
     }
 	  
     stage('Deploy memphis cluster'){
+      sh """  
+	kubectl create namespace memphis --dry-run=client -o yaml | kubectl apply -f -
+        aws s3 cp s3://memphis-jenkins-backup-bucket/regcred.yaml .
+        kubectl apply -f regcred.yaml -n memphis
+        kubectl patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"regcred\"}]}' -n memphis
+      """
       dir ('memphis-k8s'){
-	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'benchmark'
-	sh(script: """helm install my-memphis memphis --set analytics='false',cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
+	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: gitBranch
+	sh(script: """helm install my-memphis memphis --set analytics='false',global.cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
       }
     }
     
 	  
     stage('Deploy memphis benchmark tool'){
       dir ('memphis-benchmark'){
-        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-benchmark.git', branch: 'master'
+        git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-benchmark.git', branch: gitBranch
         sh 'kubectl create ns memphis-benchmark'
 	sh(script: """kubectl create secret generic benchmark-config --from-literal=TOKEN=\$(kubectl get secret memphis-creds -n memphis -o jsonpath="{.data.CONNECTION_TOKEN}"| base64 --decode) -n memphis-benchmark""", returnStdout: true)
 	sh 'kubectl apply -f deployment.yaml'
