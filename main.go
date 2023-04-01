@@ -166,7 +166,7 @@ func main() {
 
 	timestamp := strconv.Itoa(int(time.Now().Unix()))
 	stationName := "station_" + timestamp
-	c, err := memphis.Connect(host, username, token)
+	c, err := memphis.Connect(host, username, memphis.ConnectionToken(token))
 	if err != nil {
 		fmt.Println("Connect: " + err.Error())
 		os.Exit(1)
@@ -184,7 +184,7 @@ func main() {
 	var extConn []*ExtConn
 	for j := 0; j < concurrencyFactor; j++ {
 		index1 := strconv.Itoa(j)
-		c, err := memphis.Connect(host, username, token)
+		c, err := memphis.Connect(host, username, memphis.ConnectionToken(token))
 		if err != nil {
 			fmt.Println("Connect: " + err.Error())
 			os.Exit(1)
