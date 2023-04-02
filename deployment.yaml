@@ -22,10 +22,10 @@ spec:
         command: [ "/bin/sh", "-c", "--" ]
         args: [ "while true; do sleep 30; done;" ]
         env:
-        - name: TOKEN
+        - name: PASS
           valueFrom:
             secretKeyRef:
               name: "benchmark-config"
-              key: TOKEN
+              key: PASS
       nodeSelector:
         App: "memphis_benchmark"
