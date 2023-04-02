@@ -29,7 +29,7 @@ func getMsgInSize(len int) []byte {
 }
 
 func validateArgs() (string, int, int, int, string, string, string, memphis.StorageType, int, time.Duration, int, time.Duration, int, bool, bool, bool) {
-	var opType, msgSizeString, produceRateString, secondsToRunString, host, username, token, storageTypeString, replicasString,
+	var opType, msgSizeString, produceRateString, secondsToRunString, host, username, pass, storageTypeString, replicasString,
 		pullIntervalString, batchSizeString, batchTTWString, concurrencyString, printHeadersString, asyncProduceString,
 		deleteStationsString string
 
@@ -40,7 +40,7 @@ func validateArgs() (string, int, int, int, string, string, string, memphis.Stor
 		secondsToRunString = os.Getenv("SECONDS_TO_RUN")
 		host = os.Getenv("HOST")
 		username = os.Getenv("USERNAME")
-		token = os.Getenv("TOKEN")
+		pass = os.Getenv("PASS")
 		storageTypeString = os.Getenv("STORAGE_TYPE")
 		replicasString = os.Getenv("REPLICAS")
 		pullIntervalString = os.Getenv("PULL_INTERVAL")
@@ -57,7 +57,7 @@ func validateArgs() (string, int, int, int, string, string, string, memphis.Stor
 		secondsToRunString = (strings.Split(os.Args[4], "="))[1]
 		host = (strings.Split(os.Args[5], "="))[1]
 		username = (strings.Split(os.Args[6], "="))[1]
-		token = (strings.Split(os.Args[7], "="))[1]
+		pass = (strings.Split(os.Args[7], "="))[1]
 		storageTypeString = (strings.Split(os.Args[8], "="))[1]
 		replicasString = (strings.Split(os.Args[9], "="))[1]
 		pullIntervalString = (strings.Split(os.Args[10], "="))[1]
@@ -149,7 +149,7 @@ func validateArgs() (string, int, int, int, string, string, string, memphis.Stor
 		printHeaders = false
 	}
 
-	return opType, msgSize, produceRate, secondsToRun, host, username, token, storageType, replicas, pullInterval, batchSize, batchTTW, concurrency, printHeaders, asyncProduce, deleteStations
+	return opType, msgSize, produceRate, secondsToRun, host, username, pass, storageType, replicas, pullInterval, batchSize, batchTTW, concurrency, printHeaders, asyncProduce, deleteStations
 }
 
 func copyBytes(src []byte) []byte {
@@ -162,11 +162,11 @@ func copyBytes(src []byte) []byte {
 }
 
 func main() {
-	opType, msgSize, produceRate, secondsToRun, host, username, token, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, printHeaders, asyncProduce, deleteStations := validateArgs()
+	opType, msgSize, produceRate, secondsToRun, host, username, pass, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, printHeaders, asyncProduce, deleteStations := validateArgs()
 
 	timestamp := strconv.Itoa(int(time.Now().Unix()))
 	stationName := "station_" + timestamp
-	c, err := memphis.Connect(host, username, memphis.ConnectionToken(token))
+	c, err := memphis.Connect(host, username, memphis.Password(pass))
 	if err != nil {
 		fmt.Println("Connect: " + err.Error())
 		os.Exit(1)
@@ -184,7 +184,7 @@ func main() {
 	var extConn []*ExtConn
 	for j := 0; j < concurrencyFactor; j++ {
 		index1 := strconv.Itoa(j)
-		c, err := memphis.Connect(host, username, memphis.ConnectionToken(token))
+		c, err := memphis.Connect(host, username, memphis.Password(pass))
 		if err != nil {
 			fmt.Println("Connect: " + err.Error())
 			os.Exit(1)
@@ -317,8 +317,7 @@ func main() {
 
 				case <-time.After(time.Second * 1):
 					// count based on messages in the stream after 1 sec
-					natsToken := fmt.Sprintf("%s::%s", username, token)
-					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s", stationName, host, natsToken)
+					command := fmt.Sprintf("nats stream info %s --server=%s:6666 --user=%s --password=%s", stationName, host, username, pass)
 					cmd := exec.Command("bash", "-c", command)
 					var outb bytes.Buffer
 					cmd.Stdout = &outb
@@ -339,7 +338,7 @@ func main() {
 					num, _ := strconv.Atoi(cmdOut)
 					msgsCount = int64(num)
 					if opType == "e2e" || opType == "consume" { // e2e - count based on the consumed messages
-						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s", stationName, host, natsToken)
+						command := fmt.Sprintf("nats consumer info %s group1 --server=%s:6666 --user=%s --password=%s", stationName, host, username, pass)
 						cmd := exec.Command("bash", "-c", command)
 						var outb bytes.Buffer
 						cmd.Stdout = &outb
@@ -367,7 +366,7 @@ func main() {
 					}
 					fmt.Printf("%s,%v,%v,%s,%v,%v,%v,%v,%v,%v,%v\n", opType, msgSize, produceRate, storageType, replicas, pullInterval, batchSize, batchTTW, concurrencyFactor, msgsCount, latency)
 
-					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s", stationName, host, natsToken)
+					command = fmt.Sprintf("nats stream purge %s -f --server=%s:6666 --user=%s --password=%s", stationName, host, username, pass)
 					cmd = exec.Command("bash", "-c", command)
 					err := cmd.Run()
 					if err != nil {

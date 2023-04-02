@@ -17,7 +17,7 @@
                 "SECONDS_TO_RUN": "50",
                 "HOST": "localhost",
                 "USERNAME": "root",
-                "TOKEN": "memphis",
+                "PASS": "memphis",
                 "STORAGE_TYPE": "file",
                 "REPLICAS": "1",
                 "PULL_INTERVAL": "1",

@@ -48,7 +48,7 @@ extreme cost reduction, and a significantly lower amount of dev time for data-or
 ## Example commands to run
 
 ```shell
-go run main.go opType=produce/e2e msgSize=1050 produceRate=1000000 secondsToRun=5 host=localhost username=root token=memphis storageType=file/memory replicas=1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 printHeaders=true asyncProduce=false deleteStations=false
+go run main.go opType=produce/e2e msgSize=1050 produceRate=1000000 secondsToRun=5 host=localhost username=root pass=memphis storageType=file/memory replicas=1 pullInterval=100 batchSize=100 batchTTW=500 concurrency=10 printHeaders=true asyncProduce=false deleteStations=false
 ```
 
 ### Options
@@ -58,7 +58,7 @@ go run main.go opType=produce/e2e msgSize=1050 produceRate=1000000 secondsToRun=
 - SECONDS_TO_RUN // ITERATIONS
 - HOST
 - USERNAME
-- TOKEN
+- PASS
 - STORAGE_TYPE
 - REPLICAS
 - PULL_INTERVAL
