@@ -44,7 +44,7 @@ node {
       """
       dir ('memphis-k8s'){
 	git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-k8s.git', branch: 'master'
-	sh(script: """helm install my-memphis memphis --set analytics='false',global.cluster.enabled="true" --create-namespace --namespace memphis --wait""",returnStdout: true)
+	sh(script: """helm install my-memphis memphis --set analytics='false',global.cluster.enabled="true",cluster.replicas="7" --create-namespace --namespace memphis --wait""",returnStdout: true)
       }
     }
     
