@@ -31,8 +31,11 @@ node {
       dir ('memphis-terraform'){
         git credentialsId: 'main-github', url: 'git@github.com:memphisdev/memphis-terraform.git', branch: 'benchmark'
       }
-      sh 'make -C memphis-terraform/AWS/EKS/ infra'
-      sh(script: """cd memphis-terraform/AWS/EKS/ && aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)""", returnStdout: true)
+      sh """
+        terraform init -upgrade
+        make -C memphis-terraform/AWS/EKS/ infra
+        cd memphis-terraform/AWS/EKS/ && aws eks update-kubeconfig --name \$(terraform output -raw cluster_id)
+      """
     }
 	  
     stage('Deploy memphis cluster'){
