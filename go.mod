@@ -4,7 +4,7 @@ go 1.18
 
 // replace github.com/memphisdev/memphis.go => /Users/idanasulin/Desktop/Memphis/Repositories/SDKs/memphis.go
 
-require github.com/memphisdev/memphis.go v1.0.5-beta.1
+require github.com/memphisdev/memphis.go v1.0.6-beta.1
 
 require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
