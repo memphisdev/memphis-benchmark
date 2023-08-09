@@ -20,8 +20,8 @@ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnr
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/compress v1.15.14 h1:i7WCKDToww0wA+9qrUZ1xOjp218vfFo3nTU6UHp+gOc=
 github.com/klauspost/compress v1.15.14/go.mod h1:QPwzmACJjUTFsnSHH934V6woptycfrDDJnH7hvFVbGM=
-github.com/memphisdev/memphis.go v1.1.0-beta.1 h1:OWmLliw4ZrhDTq0w5hh18UtE6RvsdiBQvlq6vTMJkNg=
-github.com/memphisdev/memphis.go v1.1.0-beta.1/go.mod h1:M/VqaTMdzYS4UJgo0h7JtLQmQrdXz3lvAO/+LhhaGbY=
+github.com/memphisdev/memphis.go v1.1.1-beta.1 h1:mi47EOhTn6P4DZAE86sfSNvqEXPz/hSDRUvBDAmQ8Ro=
+github.com/memphisdev/memphis.go v1.1.1-beta.1/go.mod h1:M/VqaTMdzYS4UJgo0h7JtLQmQrdXz3lvAO/+LhhaGbY=
 github.com/minio/highwayhash v1.0.2 h1:Aak5U0nElisjDCfPSG79Tgzkn2gl66NxOMspRrKnA/g=
 github.com/minio/highwayhash v1.0.2/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
