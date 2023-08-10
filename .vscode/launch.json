@@ -11,10 +11,10 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {
-                "OP_TYPE": "consume",
+                "OP_TYPE": "produce",
                 "MSG_SIZE": "1024",
                 "PRODUCE_RATE": "300",
-                "SECONDS_TO_RUN": "50",
+                "SECONDS_TO_RUN": "10",
                 "HOST": "localhost",
                 "USERNAME": "root",
                 "PASS": "memphis",
@@ -23,10 +23,10 @@
                 "PULL_INTERVAL": "1",
                 "BATCH_SIZE": "10",
                 "BATCH_TTW": "1",
-                "CONCURRENCY": "10",
+                "CONCURRENCY": "5",
                 "PRINT_HEADERS": "true",
                 "ASYNC_PRODUCE": "true",
-                "DELETE_STATIONS": "false",
+                "DELETE_STATIONS": "true",
             }
         }
     ]
