@@ -19,8 +19,8 @@ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnr
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/compress v1.17.0 h1:Rnbp4K9EjcDuVuHtd0dgA4qNuv9yKDYKK1ulpJwgrqM=
 github.com/klauspost/compress v1.17.0/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
-github.com/memphisdev/memphis.go v1.3.0-beta.1 h1:DsbMEdMZi/wggniwJTcvCuLeTn1lSwJmlEKF/Fy9qyY=
-github.com/memphisdev/memphis.go v1.3.0-beta.1/go.mod h1:jZKJ82lyQHr01QissJUdDrnj0KT5wXjh2irhb+j0JH8=
+github.com/memphisdev/memphis.go v1.3.4-beta.1 h1:eQikKu0fHGlCoy5E1NoAtrFh1Hf8V0hz4J2/5pKBGw0=
+github.com/memphisdev/memphis.go v1.3.4-beta.1/go.mod h1:KurLqbBBZ5PMabJuOh3JX9VpSykRsog1QQKcwW5b9bU=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
